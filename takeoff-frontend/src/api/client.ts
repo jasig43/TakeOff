@@ -40,10 +40,16 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
 }
 
+/**
+ * A free hosted API goes to sleep when idle and needs a minute or more to wake (Spring Boot start-up on a small
+ * instance), during which the host holds the request rather than refusing it. The timeout has to outlast that, or the
+ * first visitor of the day sees a failure. Genuine connection failures (offline, refused, blocked) still fail at once.
+ */
+export const REQUEST_TIMEOUT_MS = 90_000
+
 export const apiClient: AxiosInstance = axios.create({
   baseURL: (import.meta.env.VITE_API_BASE_URL as string | undefined) || DEFAULT_BASE_URL,
-  // Long enough for a free-tier host to wake from idle (about a minute); genuine connection failures still fail fast.
-  timeout: 65_000,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 })
 

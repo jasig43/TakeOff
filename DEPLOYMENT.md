@@ -85,7 +85,10 @@ Do not use it for real drivers' data.
 ## Things to know
 
 * **Cold starts.** A free Render web service sleeps after 15 minutes without traffic. The first request afterwards takes
-  about a minute. Open the site (or `GET /api/v1/health`) shortly before a demo.
+  about a minute. The website copes with this: when it loads it asks the API's health check, which starts the wake-up
+  while the visitor is still on the sign-in page, and it shows a "Waking up the TakeOFF server" notice until the API
+  answers. Its requests wait up to 90 seconds, longer than a wake-up needs. Opening the site shortly before a demo
+  still makes it faster. Opening the API's own address (`GET /`) returns a short "running" message.
 * **Free Postgres expires after 30 days** (with a grace period). The Key Value store is in-memory: if it restarts, any
   queued but unprocessed events are lost. That costs at most one OTP request, which the user recovers with "Resend code".
 * **Queue delivery is at-most-once.** A Redis list cannot redeliver a message after a crash the way RabbitMQ can. The

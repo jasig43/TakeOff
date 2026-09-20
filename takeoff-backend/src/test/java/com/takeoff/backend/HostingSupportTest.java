@@ -40,6 +40,14 @@ class HostingSupportTest {
 	}
 
 	@Test
+	void openingTheApiAddressInABrowserSaysItIsRunning_insteadOfDemandingASignIn() throws Exception {
+		mvc.perform(get("/")).andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("UP"))
+			.andExpect(jsonPath("$.health").value("/api/v1/health"))
+			.andExpect(jsonPath("$.users").doesNotExist());
+	}
+
+	@Test
 	void onlyTheProbeIsOpen_otherPathsStillNeedASession() throws Exception {
 		mvc.perform(get("/api/v1/drivers/profile")).andExpect(status().isUnauthorized());
 		mvc.perform(get("/api/v1/admin/users")).andExpect(status().isUnauthorized());

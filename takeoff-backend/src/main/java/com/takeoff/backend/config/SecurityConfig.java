@@ -75,7 +75,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/api/v1/auth/**").permitAll()
-				.requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll() // the host's liveness probe
+				.requestMatchers(HttpMethod.GET, "/", "/api/v1/health").permitAll() // the address itself, and the host's liveness probe
 				// Any signed-in person may change their own password, including one who must do so before anything else.
 				.requestMatchers(HttpMethod.PUT, "/api/v1/account/password").authenticated()
 				.requestMatchers("/api/v1/drivers/**").hasRole(Role.APPLICANT_DRIVER.name())

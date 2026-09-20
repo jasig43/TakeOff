@@ -1,5 +1,6 @@
 import { BrowserRouter } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
+import { ServerWakeNotice } from './components/layout/ServerWakeNotice'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { AppRouter } from './routes/AppRouter'
@@ -10,6 +11,7 @@ export default function App() {
     // when the operating system asks for reduced motion.
     <MotionConfig reducedMotion="user">
       <ToastProvider>
+        <ServerWakeNotice />
         <AuthProvider>
           <BrowserRouter>
             <AppRouter />
