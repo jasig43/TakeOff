@@ -195,6 +195,11 @@ public class AuthService {
 		}
 
 		User user = found.get();
+		if (user.temporaryPasswordExpired(clock.instant())) {
+			// Only reachable with the correct (temporary) password. An administrator must issue a new one.
+			throw new ApiException(HttpStatus.UNAUTHORIZED, "TEMPORARY_PASSWORD_EXPIRED",
+					"Your temporary password has expired. Ask an administrator to issue a new one.");
+		}
 		if (user.getRole() == Role.APPLICANT_DRIVER && !user.isPhoneVerified()) {
 			// Only reachable with the correct password, so this reveals nothing to a guesser.
 			throw new ApiException(HttpStatus.FORBIDDEN, "PHONE_NOT_VERIFIED",

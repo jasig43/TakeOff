@@ -8,7 +8,6 @@ import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
@@ -43,7 +42,7 @@ public class SmsConfig {
 				TwilioSmsSender.requireConfigured(properties.sms().twilio());
 				yield new TwilioSmsSender(properties.sms().twilio(), restClientBuilder.get());
 			}
-			case "none", "" -> new LoggingSmsSender(environment.acceptsProfiles(Profiles.of("dev", "test")));
+			case "none", "" -> new LoggingSmsSender(environment.acceptsProfiles(EnvironmentProfiles.RELAXED));
 			default -> throw new IllegalStateException(
 					"Unknown takeoff.sms.provider '" + provider + "'. Supported values: twilio, none.");
 		};

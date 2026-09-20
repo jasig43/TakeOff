@@ -41,15 +41,20 @@ public class NotificationConsumerListener {
 		this.testBypass = properties.otp().testBypass();
 	}
 
+	/** RabbitMQ entry point (ignored when the Redis transport is in use). */
 	@RabbitListener(queues = "${takeoff.rabbitmq.notification-queue}")
 	public void onMessage(Message message) {
+		handle(message.getBody());
+	}
+
+	/** Handles one event, whichever transport delivered it. */
+	public void handle(byte[] body) {
 		DecisionEvent event;
 		try {
-			event = objectMapper.readValue(message.getBody(), DecisionEvent.class);
+			event = objectMapper.readValue(body, DecisionEvent.class);
 		}
 		catch (RuntimeException ex) {
-			log.warn("Discarding malformed notification event ({} bytes): {}", message.getBody().length,
-					ex.getClass().getSimpleName());
+			log.warn("Discarding malformed notification event ({} bytes): {}", body.length, ex.getClass().getSimpleName());
 			return;
 		}
 		if (event == null || event.userId() == null || !DecisionEvent.APPLICATION_DECIDED.equals(event.eventType())

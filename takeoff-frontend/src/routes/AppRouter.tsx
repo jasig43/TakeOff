@@ -14,6 +14,7 @@ const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage'))
 const AdminApplicationsPage = lazy(() => import('../pages/AdminApplicationsPage'))
 const AdminApplicationDetailPage = lazy(() => import('../pages/AdminApplicationDetailPage'))
 const AdminSettingsPage = lazy(() => import('../pages/AdminSettingsPage'))
+const ChangePasswordRequiredPage = lazy(() => import('../pages/ChangePasswordRequiredPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 
 function RouteFallback() {
@@ -37,6 +38,8 @@ export function AppRouter() {
 
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-otp" element={<OtpVerificationPage />} />
+        {/* Guards itself: signed-out visitors go to "/", and anyone who has nothing to change is sent to their dashboard. */}
+        <Route path="/change-password" element={<ChangePasswordRequiredPage />} />
 
         <Route element={<ProtectedRoute role="APPLICANT_DRIVER" />}>
           <Route path="/driver/dashboard" element={<DriverDashboardPage />} />

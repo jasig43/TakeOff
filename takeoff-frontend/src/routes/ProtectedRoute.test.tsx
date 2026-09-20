@@ -6,7 +6,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 
 const SESSION_KEY = 'takeoff.auth'
 
-function seedSession(role: 'APPLICANT_DRIVER' | 'LOGISTICS_ADMIN' | null) {
+function seedSession(role: 'APPLICANT_DRIVER' | 'LOGISTICS_ADMIN' | null, mustChangePassword = false) {
   window.localStorage.clear()
   if (!role) return
   window.localStorage.setItem(
@@ -14,7 +14,7 @@ function seedSession(role: 'APPLICANT_DRIVER' | 'LOGISTICS_ADMIN' | null) {
     JSON.stringify({
       accessToken: 'test-token',
       expiresAt: Date.now() + 60_000,
-      user: { id: 1, fullName: 'Test User', email: 't@example.com', phoneNumber: '+15550199', role, phoneVerified: true },
+      user: { id: 1, fullName: 'Test User', email: 't@example.com', phoneNumber: '+15550199', role, phoneVerified: true, mustChangePassword },
     }),
   )
 }
@@ -25,6 +25,7 @@ function renderAt(path: string) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/" element={<p>sign in page</p>} />
+          <Route path="/change-password" element={<p>change password page</p>} />
           <Route element={<ProtectedRoute role="APPLICANT_DRIVER" />}>
             <Route path="/driver/dashboard" element={<p>driver dashboard</p>} />
           </Route>
@@ -70,6 +71,20 @@ describe('ProtectedRoute', () => {
     renderAt('/driver/dashboard')
     expect(screen.queryByText('driver dashboard')).not.toBeInTheDocument()
     expect(screen.getByText('admin dashboard')).toBeInTheDocument()
+  })
+
+  it('sends someone on a temporary password to choose their own before any page, whatever their role', () => {
+    seedSession('APPLICANT_DRIVER', true)
+    renderAt('/driver/dashboard')
+    expect(screen.queryByText('driver dashboard')).not.toBeInTheDocument()
+    expect(screen.getByText('change password page')).toBeInTheDocument()
+  })
+
+  it('does the same for an administrator on a temporary password, and keeps them off their dashboard', () => {
+    seedSession('LOGISTICS_ADMIN', true)
+    renderAt('/admin/dashboard')
+    expect(screen.queryByText('admin dashboard')).not.toBeInTheDocument()
+    expect(screen.getByText('change password page')).toBeInTheDocument()
   })
 
   it('treats an expired stored session as signed out', () => {

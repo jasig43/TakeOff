@@ -25,7 +25,7 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 - **Document management:** upload, replace, view and remove the driver's licence, vehicle registration and insurance certificate (PDF, JPG or PNG, up to 5 MB). The file's real type is checked from its bytes, not its name.
 - **Application submission and tracking:** a review step summarises everything, the driver confirms and submits, the API stores the application in MySQL as `PENDING_REVIEW`, and the completion screen shows the **Reference ID** and status. The dashboard tracks progress and status at any time.
 - **Administrator portal:** email/password sign-in (JWT, `LOGISTICS_ADMIN`), a dashboard with counts and the review queue, a filterable and searchable application list, and a detail page that shows every field and opens each uploaded document.
-- **Admin settings:** a Settings page in the admin sidebar shows the account details and lets the administrator change their own password (current password required, the new one must meet the sign-up rules and differ from the current one).
+- **Admin settings and account management:** the admin sidebar has a Settings page with two tabs. *Account and security* shows the account details and lets the administrator change their own password. *Users and roles* lists every account (searchable, paged), lets an administrator **create an account** for someone with a **temporary password**, **assign a role** (driver or administrator) and **issue a new temporary password**. See [Account management](#account-management-and-temporary-passwords).
 - **Approve / reject:** `PENDING_REVIEW` to `APPROVED` or `REJECTED`, persisted through the admin API (`PATCH /admin/applications/{id}/status`). Rejection requires a note; the driver can then correct the application and resubmit.
 - **Driver notifications:** a bell in the fixed frosted-glass header shows the unread count and opens a panel with the latest notifications (mark one or all as read, or open the full inbox page); the dashboard and sidebar carry no notifications. An administrator's bell shows how many applications are waiting for review and links to that queue. A notification is created when an application is submitted and when it is approved or rejected. Each decision is also published to RabbitMQ (`notification.queue`), whose consumer texts the driver the outcome through the configured SMS provider.
 
@@ -96,6 +96,7 @@ TakeOff/
 ├── takeoff-frontend/      React SPA
 ├── takeoff-backend/       Spring Boot API
 ├── documentation/         Project plan and flow-state diagram (PDF), plus fictional TEST_* driver documents
+├── DEPLOYMENT.md          Free hosted demo: Vercel + Render (Postgres, Redis), variables and steps
 ├── docker-compose.yml     MySQL + RabbitMQ for local development
 ├── .env.example           Variables for docker-compose
 ├── .gitignore
@@ -234,7 +235,12 @@ Base path `/api/v1`. All errors share one JSON shape:
 | `GET /admin/applications?status=&q=&page=&size=` | admin | Submitted applications, filterable and searchable (drafts are never listed) | 200 | 400 `INVALID_STATUS_FILTER` |
 | `GET /admin/applications/{id}` | admin | Full application plus the driver's details | 200 | 404 |
 | `GET /admin/applications/{id}/documents/{type}` | admin | Open an uploaded document | 200 | 404 |
-| `PUT /admin/account/password` | admin | Change own password (`{ "currentPassword", "newPassword" }`) | 204 | 400 field errors (`currentPassword` wrong, `newPassword` weak or unchanged), 401, 403 |
+| `PUT /account/password` | any signed-in user, including one on a temporary password | Change own password (`{ "currentPassword", "newPassword" }`); returns the refreshed account | 200 | 400 field errors (`currentPassword` wrong, `newPassword` weak or unchanged), 401 |
+| `GET /admin/users?q=&page=&size=` | admin | Search and page through all accounts | 200 | 401, 403 |
+| `POST /admin/users` | admin | Create an account (`{ fullName, email, phoneNumber, role }`); returns the generated temporary password **once** | 201 | 400 field errors, 409 `EMAIL_ALREADY_REGISTERED` / `PHONE_ALREADY_REGISTERED` |
+| `PATCH /admin/users/{id}/role` | admin | Assign a role (`{ "role": "APPLICANT_DRIVER" \| "LOGISTICS_ADMIN" }`); effective immediately | 200 | 400, 404, 409 `CANNOT_CHANGE_OWN_ROLE` |
+| `POST /admin/users/{id}/temporary-password` | admin | Issue a new temporary password (returned once) | 200 | 404, 409 `CANNOT_RESET_OWN_PASSWORD` |
+| `GET /health` | public | Liveness probe for the host | 200 | |
 | `PATCH /admin/applications/{id}/status` | admin | Approve or reject (`{ "status": "APPROVED" \| "REJECTED", "note": "..." }`; note required for reject) | 200 | 400, 409 `INVALID_STATUS_TRANSITION` / `CONCURRENT_MODIFICATION` |
 
 ## 14. Authentication and OTP flow
@@ -286,11 +292,29 @@ Enforced by `@CompliantPassword` on the backend (authoritative) and mirrored liv
 | Path | Requirement |
 |---|---|
 | `/api/v1/auth/**` | public |
+| `GET /api/v1/health` | public |
+| `PUT /api/v1/account/password` | any authenticated user (the only thing someone on a temporary password may do) |
 | `/api/v1/drivers/**` (profile, application, documents, notifications) | `ROLE_APPLICANT_DRIVER` |
-| `/api/v1/admin/**` (summary, applications, documents, decisions) | `ROLE_LOGISTICS_ADMIN` |
-| everything else | authenticated |
+| `/api/v1/admin/**` (summary, applications, documents, decisions, users) | `ROLE_LOGISTICS_ADMIN` |
+| everything else | a real role (driver or administrator) |
 
-Public registration always yields `APPLICANT_DRIVER`; a `role` field in the request body is ignored. Admins are created only through the config-driven seeder (`ADMIN_SEED_*`). Missing/invalid tokens get a JSON `401`, insufficient roles a JSON `403`. The React route guards (`ProtectedRoute`) are UX only.
+Public registration always yields `APPLICANT_DRIVER`; a `role` field in the request body is ignored. Administrators come from the config-driven seeder (`ADMIN_SEED_*`) or are created by another administrator in Settings. Missing/invalid tokens get a JSON `401`, insufficient roles a JSON `403`. The role is read from the database on every request, so a role change takes effect immediately, even for a token issued earlier. The React route guards (`ProtectedRoute`) are UX only.
+
+### Account management and temporary passwords
+
+An administrator opens **Settings > Users and roles** and can:
+
+1. **Create an account.** They enter the person's name, email, phone number and role. There is no password field: the server generates a strong temporary password (18 characters, CSPRNG, no easily misread characters, always meeting the sign-up rules) and shows it **once**, with a Copy button. It is stored only as a BCrypt hash and never appears in a list, a log line or a later response. The administrator gives it to the person privately.
+2. **Assign a role.** Choose Driver or Administrator, confirm, and it takes effect straight away (a driver promoted to administrator can use the admin area with the same token on their next request, and a demoted administrator loses it). An administrator cannot change their own role, so the last administrator can never be removed.
+3. **Issue a new temporary password** for someone who lost theirs. The old password stops working immediately.
+
+What the new person experiences:
+
+1. They sign in at the normal sign-in page with their email and the temporary password.
+2. They are sent to **Choose your own password** and can do nothing else: while the temporary password is in force the server gives them no role at all, so every driver and admin route answers `403 PASSWORD_CHANGE_REQUIRED`, and the only call that works is changing their password.
+3. After they choose one (it must meet the sign-up rules and differ from the temporary one) the same session carries on to their dashboard, and the temporary password no longer works.
+
+A temporary password expires after `takeoff.accounts.temporary-password-hours` (default 72, set with `TAKEOFF_ACCOUNTS_TEMPORARY_PASSWORD_HOURS`). After that, sign-in answers `401 TEMPORARY_PASSWORD_EXPIRED`, an already-open session on it stops working, and an administrator issues a new one.
 
 ## 17. Test account and OTP instructions
 
@@ -377,7 +401,9 @@ cd takeoff-backend
 - Uploaded documents live on the API server's local disk (`UPLOAD_DIR`). That is fine for one server; run more than one, or on ephemeral hosting, and you need shared storage (an S3-compatible store behind `DocumentStorageService`) and file backups. There is **no antivirus scan** of uploads; only the type, size and signature are checked.
 - Notifications are an in-app inbox (the header bell refreshes every minute, on navigation and after the user changes something; it is not pushed) plus an SMS of the decision, sent by the `notification.queue` consumer through the same provider as OTPs. With `SMS_PROVIDER=none` there is no SMS, and as with OTPs a failed SMS is only logged. There is no email channel.
 - An administrator's decision is final in this release: an approved or rejected application cannot be moved back to `PENDING_REVIEW` by an admin (a rejected driver can reopen it themselves).
-- Administrator accounts cannot be created or managed in the UI; use the config-driven seeder. An admin can change their own password in Settings, but changing it does not sign out sessions that are already open (JWTs are stateless and there is no revocation list), and a wrong current password is not rate-limited beyond BCrypt's cost. The seeder never overwrites an existing account, so the password in the seed config stops mattering once the admin exists.
+- The first administrator still comes from the config-driven seeder; after that, administrators create and manage accounts in Settings. Changing or resetting a password does not sign out sessions that are already open (JWTs are stateless and there is no revocation list), except that an expired temporary password is refused immediately. A wrong current password is not rate-limited beyond BCrypt's cost. The seeder never overwrites an existing account, so the password in the seed config stops mattering once the admin exists.
+- An administrator cannot change their own role or reset their own password from the user list (so the last administrator can never be removed), and there is no way to disable or delete an account in the UI yet.
+- Accounts created by an administrator are marked phone-verified (the administrator vouches for the person), so they skip the sign-up OTP. The temporary password is handed over by the administrator, not sent by SMS or email.
 - Document review is "open the file in a new tab"; there is no in-page viewer, annotation or per-document accept/reject.
 - Not exercised in the build environment: real MySQL and RabbitMQ from the test suite (backend tests run on H2 in MySQL mode with the real Flyway migrations and a mocked `RabbitTemplate`). The full workflow was, however, run against a real local MySQL 8; a locally installed RabbitMQ is documented above. See the backend README.
 

@@ -9,6 +9,8 @@ export interface UserSummary {
   phoneNumber: string
   role: Role
   phoneVerified: boolean
+  /** True while the password is a temporary one an administrator issued: the person must choose their own first. */
+  mustChangePassword?: boolean
 }
 
 export interface SignUpRequest {
@@ -69,6 +71,34 @@ export interface DriverProfile {
 export interface ChangePasswordRequest {
   currentPassword: string
   newPassword: string
+}
+
+/** An account as an administrator sees it (no secrets). */
+export interface AdminUser {
+  id: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: Role
+  phoneVerified: boolean
+  enabled: boolean
+  mustChangePassword: boolean
+  temporaryPasswordExpiresAt: string | null
+  createdAt: string
+}
+
+export interface CreateAccountRequest {
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: Role
+}
+
+/** A freshly issued temporary password. The server shows it once; it is never returned again. */
+export interface IssuedCredential {
+  user: AdminUser
+  temporaryPassword: string
+  temporaryPasswordExpiresAt: string
 }
 
 export interface AdminHealth {

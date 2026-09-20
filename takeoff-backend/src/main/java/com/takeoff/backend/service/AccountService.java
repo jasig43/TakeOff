@@ -8,12 +8,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.takeoff.backend.dto.ChangePasswordRequest;
+import com.takeoff.backend.dto.UserSummaryDto;
 import com.takeoff.backend.exception.ApiException;
 import com.takeoff.backend.exception.FieldValidationException;
 import com.takeoff.backend.model.User;
 import com.takeoff.backend.repository.UserRepository;
 
-/** Things a signed-in user does to their own account. */
+/** Things a signed-in user does to their own account, whatever their role. */
 @Service
 public class AccountService {
 
@@ -28,14 +29,17 @@ public class AccountService {
 	}
 
 	/**
-	 * Changes the password after checking the current one.
+	 * Changes the password after checking the current one. If the current one was a temporary password issued by an
+	 * administrator, this is also how the person leaves the "must change password" state.
 	 *
 	 * <p>A wrong current password is reported as a field error (400), not 401: a 401 would make the SPA treat the
 	 * session as expired and sign the person out, and they are in fact still properly signed in.
 	 * Tokens already issued stay valid until they expire (JWTs are stateless), which the README notes.
+	 *
+	 * @return the refreshed account summary, so the client can drop its "must change password" flag
 	 */
 	@Transactional
-	public void changePassword(Long userId, ChangePasswordRequest request) {
+	public UserSummaryDto changePassword(Long userId, ChangePasswordRequest request) {
 		User user = users.findById(userId)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Account not found."));
 
@@ -46,8 +50,9 @@ public class AccountService {
 			throw new FieldValidationException("newPassword", "Choose a password that is different from your current one.");
 		}
 
-		user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+		user.changePassword(passwordEncoder.encode(request.newPassword()));
 		users.save(user);
 		log.info("User {} changed their password", user.getId());
+		return UserSummaryDto.from(user);
 	}
 }

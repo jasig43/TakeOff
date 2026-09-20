@@ -31,6 +31,7 @@ function renderLanding() {
             <Route path="/verify-otp" element={<p>verify otp page</p>} />
             <Route path="/driver/dashboard" element={<p>driver dashboard</p>} />
             <Route path="/admin/dashboard" element={<p>admin dashboard</p>} />
+            <Route path="/change-password" element={<p>change password page</p>} />
           </Routes>
         </MemoryRouter>
       </AuthProvider>
@@ -91,6 +92,22 @@ describe('landing page (sign in)', () => {
     renderLanding()
     await fillAndSubmit(user)
     expect(await screen.findByText('admin dashboard')).toBeInTheDocument()
+  })
+
+  it('sends anyone who signed in with a temporary password to choose their own, not to a dashboard', async () => {
+    for (const role of ['APPLICANT_DRIVER', 'LOGISTICS_ADMIN'] as const) {
+      window.localStorage.clear()
+      const response = jwtFor(role)
+      response.user.mustChangePassword = true
+      vi.mocked(authApi.login).mockResolvedValue(response)
+      const user = userEvent.setup()
+      const { unmount } = renderLanding()
+      await fillAndSubmit(user)
+      expect(await screen.findByText('change password page')).toBeInTheDocument()
+      expect(screen.queryByText('driver dashboard')).not.toBeInTheDocument()
+      expect(screen.queryByText('admin dashboard')).not.toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('sends an unverified applicant to OTP verification', async () => {

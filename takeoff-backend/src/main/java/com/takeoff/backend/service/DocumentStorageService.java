@@ -1,16 +1,11 @@
 package com.takeoff.backend.service;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,25 +13,27 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.takeoff.backend.config.TakeoffProperties;
 import com.takeoff.backend.exception.ApiException;
+import com.takeoff.backend.storage.DiskFileContentStore;
+import com.takeoff.backend.storage.FileContentStore;
 
 /**
- * Stores uploaded documents on local disk under random, server-generated names.
+ * Accepts uploaded documents and keeps them (on local disk, or in the database on the hosted demo) under random,
+ * server-generated names.
  *
  * <p>What makes it safe to accept files from the internet:
  * <ul>
  *   <li>the type is decided from the file's leading bytes (PDF, JPEG or PNG), never from the client-supplied
  *       Content-Type or extension, so a renamed executable is rejected;</li>
- *   <li>the on-disk name is a random UUID validated against a strict pattern, so no user input ever reaches a path
- *       (no traversal), and the original name is kept only as sanitised display text;</li>
+ *   <li>the storage key is a random UUID validated against a strict pattern, so no user input ever reaches a path
+ *       or a query (no traversal), and the original name is kept only as sanitised display text;</li>
  *   <li>a size limit is enforced ({@code takeoff.storage.max-file-bytes}).</li>
  * </ul>
- * MVP limitation: no antivirus scan and local-disk storage only; swap this class for object storage (S3, Azure Blob)
- * before running more than one backend instance.
+ * MVP limitation: no antivirus scan. Local disk suits one server; for more than one, use the database store or object
+ * storage (S3, Azure Blob).
  */
 @Service
 public class DocumentStorageService {
 
-	private static final Logger log = LoggerFactory.getLogger(DocumentStorageService.class);
 	private static final Pattern KEY_PATTERN = Pattern
 		.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
@@ -44,18 +41,18 @@ public class DocumentStorageService {
 	public record StoredFile(String storageKey, String contentType, long sizeBytes, String displayName) {
 	}
 
-	private final Path root;
+	private final FileContentStore store;
 	private final long maxBytes;
 
-	public DocumentStorageService(TakeoffProperties properties) {
-		this.root = Path.of(properties.storage().uploadDir()).toAbsolutePath().normalize();
+	@Autowired
+	public DocumentStorageService(TakeoffProperties properties, FileContentStore store) {
+		this.store = store;
 		this.maxBytes = properties.storage().maxFileBytes();
-		try {
-			Files.createDirectories(root);
-		}
-		catch (IOException ex) {
-			throw new IllegalStateException("Cannot create the upload directory " + root, ex);
-		}
+	}
+
+	/** Local-disk storage, as used by the unit tests and a plain local run. */
+	public DocumentStorageService(TakeoffProperties properties) {
+		this(properties, new DiskFileContentStore(properties));
 	}
 
 	public StoredFile store(MultipartFile file) {
@@ -67,57 +64,48 @@ public class DocumentStorageService {
 					"The file is too large. The maximum size is " + (maxBytes / (1024 * 1024)) + " MB.");
 		}
 
-		String contentType;
-		try (InputStream in = file.getInputStream()) {
-			contentType = detectContentType(in.readNBytes(12));
+		byte[] content;
+		try {
+			content = file.getBytes(); // already capped at maxBytes above
 		}
 		catch (IOException ex) {
 			throw new UncheckedIOException(ex);
 		}
+		String contentType = detectContentType(java.util.Arrays.copyOf(content, Math.min(content.length, 12)));
 		if (contentType == null) {
 			throw new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_FILE_TYPE",
 					"Upload a PDF, JPG or PNG file.");
 		}
 
 		String key = UUID.randomUUID().toString();
-		try (InputStream in = file.getInputStream()) {
-			Files.copy(in, resolve(key));
-		}
-		catch (IOException ex) {
-			throw new UncheckedIOException(ex);
-		}
-		return new StoredFile(key, contentType, file.getSize(), sanitizeFilename(file.getOriginalFilename(), contentType));
+		store.write(key, content);
+		return new StoredFile(key, contentType, content.length, sanitizeFilename(file.getOriginalFilename(), contentType));
 	}
 
 	public Resource load(String storageKey) {
-		Path path = resolve(storageKey);
-		if (!Files.isRegularFile(path)) {
+		Resource resource = store.read(requireKey(storageKey));
+		if (resource == null) {
 			throw new ApiException(HttpStatus.NOT_FOUND, "DOCUMENT_FILE_MISSING", "The document file could not be found.");
 		}
-		return new FileSystemResource(path);
+		return resource;
 	}
 
 	/** Best effort: a leftover file is harmless, a failed delete must never break a request. */
 	public void delete(String storageKey) {
 		try {
-			Files.deleteIfExists(resolve(storageKey));
+			store.delete(requireKey(storageKey));
 		}
-		catch (IOException | RuntimeException ex) {
-			log.warn("Could not delete stored document {}: {}", storageKey, ex.getMessage());
+		catch (RuntimeException ex) {
+			// includes an invalid key: nothing legitimate could be stored under it
 		}
 	}
 
-	private Path resolve(String key) {
+	private static String requireKey(String key) {
 		if (key == null || !KEY_PATTERN.matcher(key).matches()) {
 			throw new IllegalArgumentException("Invalid storage key");
 		}
-		Path path = root.resolve(key).normalize();
-		if (!path.startsWith(root)) {
-			throw new IllegalArgumentException("Invalid storage key");
-		}
-		return path;
+		return key;
 	}
-
 	/** Recognises PDF, JPEG and PNG by their signatures. Returns null for anything else. */
 	static String detectContentType(byte[] h) {
 		if (h.length >= 5 && h[0] == '%' && h[1] == 'P' && h[2] == 'D' && h[3] == 'F' && h[4] == '-') {

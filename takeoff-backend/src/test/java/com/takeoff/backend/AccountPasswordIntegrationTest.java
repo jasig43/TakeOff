@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,17 +32,17 @@ import com.takeoff.backend.repository.UserRepository;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * An administrator changing their own password, over the real security chain. It uses its own throw-away accounts so the
- * seeded admin that other tests sign in with is never touched.
+ * A signed-in person changing their own password, over the real security chain. It uses its own throw-away accounts so
+ * the seeded admin that other tests sign in with is never touched.
  */
 @TakeoffIntegrationTest
-class AdminAccountIntegrationTest {
+class AccountPasswordIntegrationTest {
 
 	private static final String ADMIN_EMAIL = "settings-admin@takeoff.test";
 	private static final String DRIVER_EMAIL = "settings-driver@takeoff.test";
 	private static final String OLD_PASSWORD = "Settings-Admin#Password1";
 	private static final String NEW_PASSWORD = "Brand-New#Password2027";
-	private static final String URL = "/api/v1/admin/account/password";
+	private static final String URL = "/api/v1/account/password";
 
 	@Autowired
 	MockMvc mvc;
@@ -99,7 +98,10 @@ class AdminAccountIntegrationTest {
 	void anAdminCanChangeTheirPasswordAndOnlyTheNewOneWorksAfterwards() throws Exception {
 		String token = token(ADMIN_EMAIL);
 
-		change(token, OLD_PASSWORD, NEW_PASSWORD).andExpect(status().isNoContent()).andExpect(content().string(""));
+		change(token, OLD_PASSWORD, NEW_PASSWORD).andExpect(status().isOk())
+			.andExpect(jsonPath("$.email").value(ADMIN_EMAIL))
+			.andExpect(jsonPath("$.mustChangePassword").value(false))
+			.andExpect(jsonPath("$.passwordHash").doesNotExist());
 
 		login(ADMIN_EMAIL, OLD_PASSWORD).andExpect(status().isUnauthorized());
 		login(ADMIN_EMAIL, NEW_PASSWORD).andExpect(status().isOk());
@@ -153,12 +155,13 @@ class AdminAccountIntegrationTest {
 	}
 
 	@Test
-	void driversAndAnonymousCallersCannotUseTheAdminEndpoint() throws Exception {
-		change(token(DRIVER_EMAIL), OLD_PASSWORD, NEW_PASSWORD).andExpect(status().isForbidden());
+	void anyRoleCanChangeTheirOwnPassword_butAnonymousCallersCannot() throws Exception {
 		change(null, OLD_PASSWORD, NEW_PASSWORD).andExpect(status().isUnauthorized());
 
-		// the driver's password was not changed by the refused call
-		login(DRIVER_EMAIL, OLD_PASSWORD).andExpect(status().isOk());
+		change(token(DRIVER_EMAIL), OLD_PASSWORD, NEW_PASSWORD).andExpect(status().isOk());
+		login(DRIVER_EMAIL, NEW_PASSWORD).andExpect(status().isOk());
+		// each person changes only their own password: the admin's is untouched
+		login(ADMIN_EMAIL, OLD_PASSWORD).andExpect(status().isOk());
 	}
 
 	@Test

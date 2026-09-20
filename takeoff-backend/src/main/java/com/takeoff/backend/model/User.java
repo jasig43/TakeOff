@@ -52,6 +52,14 @@ public class User {
 	@Column(nullable = false)
 	private boolean enabled = true;
 
+	/** True while the password is a temporary one issued by an administrator; the person must replace it first. */
+	@Column(name = "must_change_password", nullable = false)
+	private boolean mustChangePassword;
+
+	/** When the temporary password stops working; null when there is no temporary password. */
+	@Column(name = "temporary_password_expires_at")
+	private Instant temporaryPasswordExpiresAt;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -102,13 +110,45 @@ public class User {
 		return passwordHash;
 	}
 
-	/** Replaces the stored hash. Callers pass an already-encoded value, never a plain-text password. */
-	public void setPasswordHash(String passwordHash) {
+	/**
+	 * The person chose their own password. Callers pass an already-encoded hash, never a plain-text password. Clears
+	 * any temporary-password state.
+	 */
+	public void changePassword(String passwordHash) {
 		this.passwordHash = passwordHash;
+		this.mustChangePassword = false;
+		this.temporaryPasswordExpiresAt = null;
+	}
+
+	/**
+	 * An administrator issued a temporary password (already hashed). Until the person replaces it they can do nothing
+	 * else, and it stops working at {@code expiresAt}.
+	 */
+	public void issueTemporaryPassword(String passwordHash, Instant expiresAt) {
+		this.passwordHash = passwordHash;
+		this.mustChangePassword = true;
+		this.temporaryPasswordExpiresAt = expiresAt;
+	}
+
+	/** True when the password is a temporary one whose time has run out. */
+	public boolean temporaryPasswordExpired(Instant now) {
+		return mustChangePassword && temporaryPasswordExpiresAt != null && !temporaryPasswordExpiresAt.isAfter(now);
+	}
+
+	public boolean isMustChangePassword() {
+		return mustChangePassword;
+	}
+
+	public Instant getTemporaryPasswordExpiresAt() {
+		return temporaryPasswordExpiresAt;
 	}
 
 	public Role getRole() {
 		return role;
+	}
+
+	public void setRole(Role role) {
+		this.role = role;
 	}
 
 	public boolean isPhoneVerified() {

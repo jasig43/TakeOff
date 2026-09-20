@@ -4,17 +4,15 @@ import { motion } from 'framer-motion'
 import { LogIn } from 'lucide-react'
 import { authApi } from '../../api/authApi'
 import { isApiError } from '../../api/client'
-import type { Role } from '../../api/types'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import { isValidEmail } from '../../utils/formValidation'
+import { homePathFor } from '../../utils/homePath'
 import { savePendingVerification } from '../../utils/tokenStorage'
 import { Button } from '../ui/Button'
 import { GlassCard } from '../ui/GlassCard'
 import { PasswordField } from '../ui/PasswordField'
 import { TextField } from '../ui/TextField'
-
-const dashboardFor = (role: Role) => (role === 'LOGISTICS_ADMIN' ? '/admin/dashboard' : '/driver/dashboard')
 
 /**
  * The single sign-in form for everyone. The server decides the role; after a successful login the user
@@ -47,7 +45,8 @@ export function LoginForm() {
     try {
       const response = await authApi.login({ email: normalizedEmail, password })
       login(response)
-      navigate(dashboardFor(response.user.role), { replace: true })
+      // A temporary password (issued by an administrator) must be replaced before anything else.
+      navigate(homePathFor(response.user), { replace: true })
     } catch (err) {
       if (isApiError(err) && err.code === 'PHONE_NOT_VERIFIED') {
         savePendingVerification({ email: normalizedEmail })

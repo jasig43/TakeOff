@@ -9,9 +9,9 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
+import com.takeoff.backend.config.EnvironmentProfiles;
 import com.takeoff.backend.config.TakeoffProperties;
 
 /**
@@ -34,7 +34,7 @@ public class OtpCodec {
 	public OtpCodec(TakeoffProperties properties, Environment environment) {
 		TakeoffProperties.Otp otp = properties.otp();
 		this.hashing = otp.hashCodes();
-		if (!hashing && !environment.acceptsProfiles(Profiles.of("dev", "test"))) {
+		if (!hashing && !environment.acceptsProfiles(EnvironmentProfiles.RELAXED)) {
 			throw new IllegalStateException(
 					"takeoff.otp.hash-codes=false is only allowed in the dev/test profiles; OTPs must be hashed elsewhere.");
 		}

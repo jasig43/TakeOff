@@ -1,19 +1,20 @@
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { KeyRound, Monitor, UserRound } from 'lucide-react'
-import { adminApi } from '../api/authApi'
-import { PasswordChecklist } from '../components/auth/PasswordChecklist'
-import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter'
+import { ChangePasswordForm } from '../components/account/ChangePasswordForm'
+import { UsersAndRoles } from '../components/account/UsersAndRoles'
 import { AppShell } from '../components/layout/AppShell'
-import { Button } from '../components/ui/Button'
 import { GlassCard } from '../components/ui/GlassCard'
-import { PasswordField } from '../components/ui/PasswordField'
 import { useAuth } from '../hooks/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { usePasswordValidation } from '../hooks/usePasswordValidation'
 import { useToast } from '../hooks/useToast'
-import { errorMessage, fieldMessages } from '../utils/apiHelpers'
+import { ROLE_LABEL } from '../utils/formatting'
 
-type Field = 'currentPassword' | 'newPassword'
+type TabId = 'account' | 'users'
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'account', label: 'Account and security' },
+  { id: 'users', label: 'Users and roles' },
+]
 
 function Row({ label, children }: { label: string; children: string }) {
   return (
@@ -26,163 +27,110 @@ function Row({ label, children }: { label: string; children: string }) {
 
 export default function AdminSettingsPage() {
   usePageTitle('Settings')
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const toast = useToast()
+  const [tab, setTab] = useState<TabId>('account')
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({ account: null, users: null })
 
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [serverErrors, setServerErrors] = useState<Partial<Record<Field, string>>>({})
-  const [formError, setFormError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  // Synchronous guard: state updates are async, so a fast double-submit could slip past `submitting`.
-  const inFlight = useRef(false)
-
-  const strengthId = useId()
-  const checklistId = useId()
-  const formErrorId = useId()
-  const evaluation = usePasswordValidation(newPassword)
-
-  const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword
-  const canSubmit = currentPassword.length > 0 && evaluation.isValid && confirmPassword === newPassword
-
-  const clearError = (field: Field) => {
-    setFormError('')
-    setServerErrors((current) => (current[field] ? { ...current, [field]: undefined } : current))
-  }
-
-  const handleSubmit = async (event: FormEvent) => {
+  // Arrow keys move between tabs, as people expect from a tab list.
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') return
     event.preventDefault()
-    if (!canSubmit || inFlight.current) return
-    inFlight.current = true
-    setSubmitting(true)
-    setFormError('')
-    setServerErrors({})
-    try {
-      await adminApi.changePassword({ currentPassword, newPassword })
-      // Never keep plain-text passwords around once they have been sent.
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      toast.success('Your password has been changed.')
-    } catch (error) {
-      const fields = fieldMessages(error)
-      if (Object.keys(fields).length > 0) {
-        setServerErrors({ currentPassword: fields.currentPassword, newPassword: fields.newPassword })
-      } else {
-        setFormError(errorMessage(error, 'We could not change your password. Please try again.'))
-      }
-    } finally {
-      inFlight.current = false
-      setSubmitting(false)
-    }
+    const index = TABS.findIndex((t) => t.id === tab)
+    const next =
+      event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length
+    setTab(TABS[next].id)
+    tabRefs.current[TABS[next].id]?.focus()
   }
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-6">
         <header>
           <h1 className="font-display text-3xl font-bold">Settings</h1>
-          <p className="mt-2 text-muted">Your account and how you sign in.</p>
+          <p className="mt-2 text-muted">Your account, and the people who can sign in to TakeOFF.</p>
         </header>
 
-        <GlassCard className="p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <UserRound className="h-5 w-5 text-brand" aria-hidden="true" />
-            Account
-          </h2>
-          {user && (
-            <dl className="mt-4 space-y-3">
-              <Row label="Name">{user.fullName}</Row>
-              <Row label="Email">{user.email}</Row>
-              <Row label="Phone">{user.phoneNumber}</Row>
-              <Row label="Role">Administrator</Row>
-            </dl>
-          )}
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <KeyRound className="h-5 w-5 text-brand" aria-hidden="true" />
-            Change password
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Use the same rules as sign-up. You stay signed in here; other devices that are already signed in stay signed
-            in until their session expires.
-          </p>
-
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className="mt-6 space-y-5"
-            aria-describedby={formError ? formErrorId : undefined}
-          >
-            {formError && (
-              <p
-                id={formErrorId}
-                role="alert"
-                className="rounded-xl border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
-              >
-                {formError}
-              </p>
-            )}
-
-            <PasswordField
-              label="Current password"
-              required
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => {
-                setCurrentPassword(e.target.value)
-                clearError('currentPassword')
-              }}
-              error={serverErrors.currentPassword}
-              disabled={submitting}
-            />
-
-            <div className="space-y-3">
-              <PasswordField
-                label="New password"
-                required
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value)
-                  clearError('newPassword')
+        <div role="tablist" aria-label="Settings sections" className="flex gap-2 border-b border-line">
+          {TABS.map(({ id, label }) => {
+            const selected = tab === id
+            return (
+              <button
+                key={id}
+                ref={(node) => {
+                  tabRefs.current[id] = node
                 }}
-                error={serverErrors.newPassword}
-                describedBy={`${strengthId} ${checklistId}`}
-                disabled={submitting}
-              />
-              <PasswordStrengthMeter id={strengthId} evaluation={evaluation} />
-              <PasswordChecklist id={checklistId} rules={evaluation.rules} />
-            </div>
+                type="button"
+                role="tab"
+                id={`tab-${id}`}
+                aria-selected={selected}
+                aria-controls={`panel-${id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(id)}
+                onKeyDown={onKeyDown}
+                className={`-mb-px rounded-t-xl border-b-2 px-4 py-3 text-sm font-semibold transition ${
+                  selected ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-fg'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
 
-            <PasswordField
-              label="Confirm new password"
-              required
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              error={mismatch ? 'The two passwords must match.' : undefined}
-              disabled={submitting}
-            />
+        {tab === 'account' && (
+          <div role="tabpanel" id="panel-account" aria-labelledby="tab-account" className="max-w-3xl space-y-6">
+            <GlassCard className="p-6">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <UserRound className="h-5 w-5 text-brand" aria-hidden="true" />
+                Account
+              </h2>
+              {user && (
+                <dl className="mt-4 space-y-3">
+                  <Row label="Name">{user.fullName}</Row>
+                  <Row label="Email">{user.email}</Row>
+                  <Row label="Phone">{user.phoneNumber}</Row>
+                  <Row label="Role">{ROLE_LABEL[user.role]}</Row>
+                </dl>
+              )}
+            </GlassCard>
 
-            <Button type="submit" disabled={!canSubmit} loading={submitting} loadingLabel="Changing password">
-              Change password
-            </Button>
-          </form>
-        </GlassCard>
+            <GlassCard className="p-6">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <KeyRound className="h-5 w-5 text-brand" aria-hidden="true" />
+                Change password
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Use the same rules as sign-up. You stay signed in here; other devices that are already signed in stay signed
+                in until their session expires.
+              </p>
+              <div className="mt-6">
+                <ChangePasswordForm
+                  onSuccess={(next) => {
+                    updateUser(next)
+                    toast.success('Your password has been changed.')
+                  }}
+                />
+              </div>
+            </GlassCard>
 
-        <GlassCard className="p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Monitor className="h-5 w-5 text-brand" aria-hidden="true" />
-            Appearance
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            TakeOFF follows your device&apos;s light or dark setting automatically, so there is nothing to switch here.
-          </p>
-        </GlassCard>
+            <GlassCard className="p-6">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Monitor className="h-5 w-5 text-brand" aria-hidden="true" />
+                Appearance
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                TakeOFF follows your device&apos;s light or dark setting automatically, so there is nothing to switch here.
+              </p>
+            </GlassCard>
+          </div>
+        )}
+
+        {tab === 'users' && (
+          <div role="tabpanel" id="panel-users" aria-labelledby="tab-users">
+            <UsersAndRoles />
+          </div>
+        )}
       </div>
     </AppShell>
   )

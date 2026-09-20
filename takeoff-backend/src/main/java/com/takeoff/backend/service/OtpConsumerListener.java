@@ -10,10 +10,10 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionOperations;
 
+import com.takeoff.backend.config.EnvironmentProfiles;
 import com.takeoff.backend.config.TakeoffProperties;
 import com.takeoff.backend.dto.OtpEvent;
 import com.takeoff.backend.model.OtpToken;
@@ -67,12 +67,12 @@ public class OtpConsumerListener {
 		this.objectMapper = objectMapper;
 		this.transactions = transactions;
 		this.otp = properties.otp();
-		this.devOrTest = environment.acceptsProfiles(Profiles.of("dev", "test"));
+		this.devOrTest = environment.acceptsProfiles(EnvironmentProfiles.RELAXED);
 		this.clock = clock;
 
 		// Fail fast: a fixed, publicly documented code must never be live outside development.
 		if (otp.testBypass().enabled() && !devOrTest) {
-			throw new IllegalStateException("takeoff.otp.test-bypass.enabled must not be true outside the dev/test "
+			throw new IllegalStateException("takeoff.otp.test-bypass.enabled must not be true outside the dev/demo/test "
 					+ "profiles: it would give a publicly known code to the bypass phone number.");
 		}
 	}
@@ -81,9 +81,15 @@ public class OtpConsumerListener {
 	private record IssuedOtp(Long userId, String phoneNumber, String code, boolean testPhone) {
 	}
 
+	/** RabbitMQ entry point (ignored when the Redis transport is in use). */
 	@RabbitListener(queues = "${takeoff.rabbitmq.queue}")
 	public void onMessage(Message message) {
-		OtpEvent event = parse(message);
+		handle(message.getBody());
+	}
+
+	/** Handles one event, whichever transport delivered it. */
+	public void handle(byte[] body) {
+		OtpEvent event = parse(body);
 		if (event == null) {
 			return;
 		}
@@ -101,14 +107,13 @@ public class OtpConsumerListener {
 		}
 	}
 
-	private OtpEvent parse(Message message) {
+	private OtpEvent parse(byte[] body) {
 		OtpEvent event;
 		try {
-			event = objectMapper.readValue(message.getBody(), OtpEvent.class);
+			event = objectMapper.readValue(body, OtpEvent.class);
 		}
 		catch (RuntimeException ex) {
-			log.warn("Discarding malformed OTP event ({} bytes): {}", message.getBody().length,
-					ex.getClass().getSimpleName());
+			log.warn("Discarding malformed OTP event ({} bytes): {}", body.length, ex.getClass().getSimpleName());
 			return null;
 		}
 		if (event == null || event.userId() == null || !OtpEvent.OTP_GENERATE.equals(event.eventType())) {

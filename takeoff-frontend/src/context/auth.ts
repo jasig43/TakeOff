@@ -7,6 +7,8 @@ export interface AuthContextValue {
   /** Persists a successful login / OTP-verification response and updates app state. */
   login: (response: JwtResponse) => void
   logout: () => void
+  /** Replaces the signed-in user's summary (for example after they choose a new password) and persists it. */
+  updateUser: (user: UserSummary) => void
   hasRole: (role: Role) => boolean
 }
 

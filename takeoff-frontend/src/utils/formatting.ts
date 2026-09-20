@@ -1,4 +1,4 @@
-import type { ApplicationStatus, DocumentType, VehicleType } from '../api/types'
+import type { ApplicationStatus, DocumentType, Role, VehicleType } from '../api/types'
 
 export const STATUS_LABEL: Record<ApplicationStatus, string> = {
   DRAFT: 'Draft',
@@ -6,6 +6,13 @@ export const STATUS_LABEL: Record<ApplicationStatus, string> = {
   APPROVED: 'Approved',
   REJECTED: 'Not approved',
 }
+
+export const ROLE_LABEL: Record<Role, string> = {
+  APPLICANT_DRIVER: 'Driver',
+  LOGISTICS_ADMIN: 'Administrator',
+}
+
+export const ROLES: Role[] = ['APPLICANT_DRIVER', 'LOGISTICS_ADMIN']
 
 export const DOCUMENT_LABEL: Record<DocumentType, string> = {
   DRIVERS_LICENCE: "Driver's licence",

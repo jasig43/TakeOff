@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { UNAUTHORIZED_EVENT } from '../api/client'
-import type { JwtResponse, Role } from '../api/types'
+import type { JwtResponse, Role, UserSummary } from '../api/types'
 import {
   clearPendingVerification,
   clearSession,
@@ -26,6 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(next)
     clearPendingVerification()
     setSession(next)
+  }, [])
+
+  const updateUser = useCallback((next: UserSummary) => {
+    const current = readSession() // storage is the source of truth, so a stale render can't overwrite the token
+    if (!current) return
+    const updated: StoredSession = { ...current, user: next }
+    saveSession(updated)
+    setSession(updated)
   }, [])
 
   const logout = useCallback(() => {
@@ -69,9 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       login,
       logout,
+      updateUser,
       hasRole: (role: Role) => user?.role === role,
     }),
-    [user, login, logout],
+    [user, login, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

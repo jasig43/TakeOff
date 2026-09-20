@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -41,7 +40,7 @@ public class DriverAccountSeeder implements ApplicationRunner {
 		this.seed = properties.driver().seed();
 		this.users = users;
 		this.passwordEncoder = passwordEncoder;
-		this.devOrTest = environment.acceptsProfiles(Profiles.of("dev", "test"));
+		this.devOrTest = environment.acceptsProfiles(EnvironmentProfiles.RELAXED);
 	}
 
 	@Override

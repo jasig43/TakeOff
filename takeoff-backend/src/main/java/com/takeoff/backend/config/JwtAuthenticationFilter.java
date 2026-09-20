@@ -1,6 +1,7 @@
 package com.takeoff.backend.config;
 
 import java.io.IOException;
+import java.time.Clock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,10 +40,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
 	private final CustomUserDetailsService userDetailsService;
+	private final Clock clock;
 
-	public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+	public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService, Clock clock) {
 		this.jwtService = jwtService;
 		this.userDetailsService = userDetailsService;
+		this.clock = clock;
 	}
 
 	@Override
@@ -66,6 +69,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			TakeoffUserDetails user = userDetailsService.loadUserByUsername(email);
 			if (!user.isEnabled() || !String.valueOf(user.getId()).equals(jwt.getSubject())) {
 				return;
+			}
+			if (user.temporaryPasswordExpired(clock.instant())) {
+				return; // an expired temporary password is as good as no session: an admin must issue a new one
 			}
 			UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken
 				.authenticated(user, null, user.getAuthorities());

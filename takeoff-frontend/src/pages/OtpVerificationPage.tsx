@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useCountdown } from '../hooks/useCountdown'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useToast } from '../hooks/useToast'
+import { homePathFor } from '../utils/homePath'
 import { readPendingVerification, savePendingVerification, type PendingVerification } from '../utils/tokenStorage'
 
 const DEFAULT_OTP_SECONDS = 300
@@ -41,7 +42,7 @@ export default function OtpVerificationPage() {
   })
 
   if (arrivedSignedIn && user) {
-    return <Navigate to={user.role === 'LOGISTICS_ADMIN' ? '/admin/dashboard' : '/driver/dashboard'} replace />
+    return <Navigate to={homePathFor(user)} replace />
   }
   if (!pending) {
     return <Navigate to="/register" replace />

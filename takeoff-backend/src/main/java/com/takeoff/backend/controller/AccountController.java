@@ -1,6 +1,5 @@
 package com.takeoff.backend.controller;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -8,30 +7,30 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.takeoff.backend.dto.ChangePasswordRequest;
+import com.takeoff.backend.dto.UserSummaryDto;
 import com.takeoff.backend.security.TakeoffUserDetails;
 import com.takeoff.backend.service.AccountService;
 
 import jakarta.validation.Valid;
 
 /**
- * The administrator's own account settings. {@code SecurityConfig} requires ROLE_LOGISTICS_ADMIN for
- * {@code /api/v1/admin/**}, and the account changed is always the authenticated user's own (the id comes from the
- * token, never from the request).
+ * A signed-in person's own account, for any role. {@code SecurityConfig} lets anyone who is authenticated call the
+ * password change, including someone who has to replace a temporary password before doing anything else. The account
+ * changed is always the token's own user (the id never comes from the request).
  */
 @RestController
-@RequestMapping("/api/v1/admin/account")
-public class AdminAccountController {
+@RequestMapping("/api/v1/account")
+public class AccountController {
 
 	private final AccountService accountService;
 
-	public AdminAccountController(AccountService accountService) {
+	public AccountController(AccountService accountService) {
 		this.accountService = accountService;
 	}
 
 	@PutMapping("/password")
-	public ResponseEntity<Void> changePassword(@AuthenticationPrincipal TakeoffUserDetails principal,
+	public UserSummaryDto changePassword(@AuthenticationPrincipal TakeoffUserDetails principal,
 			@Valid @RequestBody ChangePasswordRequest request) {
-		accountService.changePassword(principal.getId(), request);
-		return ResponseEntity.noContent().build();
+		return accountService.changePassword(principal.getId(), request);
 	}
 }

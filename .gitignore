@@ -42,3 +42,6 @@ takeoff-backend/config/
 
 # Uploaded driver documents (personal data): never committed
 takeoff-backend/data/
+
+# Vercel CLI link (project and team ids)
+.vercel/

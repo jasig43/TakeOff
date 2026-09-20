@@ -1,4 +1,4 @@
-import type { Application, ApplicationDetail, DocumentInfo, DocumentType } from '../api/types'
+import type { AdminUser, Application, ApplicationDetail, DocumentInfo, DocumentType } from '../api/types'
 
 export function makeApplication(overrides: Partial<Application> = {}): Application {
   return {
@@ -38,6 +38,22 @@ export function makeCompleteApplication(overrides: Partial<Application> = {}): A
     progress: { personal: true, identity: true, vehicle: true, documents: true, readyToSubmit: true },
     ...overrides,
   })
+}
+
+export function makeUser(overrides: Partial<AdminUser> = {}): AdminUser {
+  return {
+    id: 2,
+    fullName: 'Grace Hopper',
+    email: 'grace@example.com',
+    phoneNumber: '+263772222222',
+    role: 'APPLICANT_DRIVER',
+    phoneVerified: true,
+    enabled: true,
+    mustChangePassword: false,
+    temporaryPasswordExpiresAt: null,
+    createdAt: '2026-09-01T09:00:00Z',
+    ...overrides,
+  }
 }
 
 export function makeDetail(application: Application): ApplicationDetail {

@@ -5,6 +5,7 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * Names are configurable ({@code takeoff.rabbitmq.*}). Spring's RabbitAdmin declares these on first connect.
  */
 @Configuration
+@ConditionalOnProperty(name = "takeoff.messaging.provider", havingValue = "rabbitmq", matchIfMissing = true)
 public class RabbitMqConfig {
 
 	@Bean

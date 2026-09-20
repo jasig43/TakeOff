@@ -1,0 +1,11 @@
+# Keep secrets, local data and build output out of the image and the build context.
+config/
+data/
+target/
+.env
+.env.*
+!.env.example
+*.log
+.idea/
+.vscode/
+.git/

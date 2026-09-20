@@ -18,7 +18,9 @@ Copy `.env.example` to `.env.local`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8080/api/v1` | Backend base URL |
+| `VITE_API_BASE_URL` | `http://localhost:8080/api/v1` | Backend base URL (baked in at build time; on Vercel set it in the project's environment variables and redeploy) |
+
+Deploying to Vercel: set the project's *Root Directory* to `takeoff-frontend`. `vercel.json` provides the single-page-app rewrite (every path serves `index.html`) and long caching for the hashed assets. See [`DEPLOYMENT.md`](../DEPLOYMENT.md).
 
 ## Routes
 
@@ -32,7 +34,8 @@ Copy `.env.example` to `.env.local`.
 | `/admin/dashboard` | admin only | Counts by status (links into the filtered list) and the review queue |
 | `/admin/applications` | admin only | Searchable, filterable, paged list (filter and page are kept in the URL) |
 | `/admin/applications/:id` | admin only | Every field, each document, and the approve / reject controls |
-| `/admin/settings` | admin only | Account details and change password |
+| `/admin/settings` | admin only | Two tabs: *Account and security* (details, change password) and *Users and roles* (search accounts, create one with a temporary password, assign a role, issue a new temporary password) |
+| `/change-password` | signed in, on a temporary password | Choose your own password; nothing else works until then. Anyone who does not need it is sent to their dashboard |
 
 The older `/login` and `/admin/login` URLs redirect to `/`. After login, the user is sent to the dashboard for the role the server returns, and the sidebar only offers that role's pages.
 
@@ -72,4 +75,4 @@ public/         favicon.ico, favicon-16/32, apple-touch-icon, icon-192/512, icon
 
 ## Tests
 
-Vitest + Testing Library: password rules (every special character, boundaries, strength levels), form validators, `OtpInput` (numeric only, auto-advance, backspace, paste, arrows), `ProtectedRoute` role matrix and expired sessions, the sign-in page (driver and admin redirects, unverified phone, bad credentials, button gating), and the sidebar (current page, user and role, sign out, phone drawer open/close, Escape, focus handling, and that each role is offered only its own links). Phase 2 adds the application validators; the driver dashboard and application wizard (validation, saving, server errors, uploads, review and submit, the submitted and rejected views); the admin dashboard, application list (filter, debounced search, paging, empty and error states) and detail page (documents, approve, reject-needs-a-reason, confirmation, conflicts, already-decided applications, invalid ids). The header (fixed frosted-glass bar; the driver bell's count, panel, mark-as-read, Escape and click-away; the administrator bell's waiting count and queue link) has its own tests, as does the admin Settings page (account details, the button gated on the password rules, success clearing the fields, server errors under the right field, double-submit). Currently 115 tests.
+Vitest + Testing Library: password rules (every special character, boundaries, strength levels), form validators, `OtpInput` (numeric only, auto-advance, backspace, paste, arrows), `ProtectedRoute` role matrix and expired sessions, the sign-in page (driver and admin redirects, unverified phone, bad credentials, button gating), and the sidebar (current page, user and role, sign out, phone drawer open/close, Escape, focus handling, and that each role is offered only its own links). Phase 2 adds the application validators; the driver dashboard and application wizard (validation, saving, server errors, uploads, review and submit, the submitted and rejected views); the admin dashboard, application list (filter, debounced search, paging, empty and error states) and detail page (documents, approve, reject-needs-a-reason, confirmation, conflicts, already-decided applications, invalid ids). The header (fixed frosted-glass bar; the driver bell's count, panel, mark-as-read, Escape and click-away; the administrator bell's waiting count and queue link) has its own tests, as does the admin Settings page (account details, the button gated on the password rules, success clearing the fields, server errors under the right field, double-submit). The users-and-roles panel (list, search, paging, create with validation and duplicates, the temporary password shown once and forgotten, copy, role change with confirmation, new temporary password) and the forced password-change screen have their own tests, and the route guard and sign-in are tested for the temporary-password redirect. Currently 143 tests.

@@ -17,6 +17,7 @@ API: http://localhost:8080. Configuration is documented in [`.env.example`](.env
 |---|---|
 | *(none)* | Not a dev environment. Refuses to start without `JWT_SECRET`. |
 | `dev` | Local defaults matching `docker-compose.yml`, OTP printed to the console, evaluator test phone enabled, dev admin seeded. |
+| `demo` | The free hosted demo (Render): PostgreSQL migrations, a Redis queue instead of RabbitMQ, documents stored in the database, dev-style OTP conveniences (code in the log, test number `+15550199` / `123456`) but **no built-in secrets**. See [`DEPLOYMENT.md`](../DEPLOYMENT.md). |
 | `test` | Used by the automated tests (H2, mocked broker). Lives in `src/test/resources`. |
 | `prod` | Strict: everything must come from the environment; OTPs hashed; no dev shortcuts. |
 
@@ -26,7 +27,7 @@ Startup guards: a missing/short `JWT_SECRET` fails with an explicit message; the
 
 ```
 config/      SecurityConfig, JwtAuthenticationFilter, RabbitMqConfig, TakeoffProperties, AdminAccountSeeder
-controller/  AuthController, DriverController, AdminController,
+controller/  AuthController, AccountController, HealthController, DriverController, AdminController, AdminUserController,
              DriverApplicationController, AdminApplicationController, DocumentResponses
 dto/         request/response records, the OtpEvent and DecisionEvent message contracts, ApplicationDto, AdminDtos
 exception/   ApiException, FieldValidationException, ApiErrorResponse, GlobalExceptionHandler
@@ -35,7 +36,11 @@ model/       User, Role, OtpToken, DriverApplication, ApplicationDocument, Notif
 repository/  UserRepository, OtpTokenRepository, DriverApplicationRepository, ApplicationDocumentRepository,
              NotificationRepository
 security/    JwtService, CustomUserDetailsService, TakeoffUserDetails
-service/     AuthService, DriverService, OtpProducerService, OtpConsumerListener, OtpCodec,
+messaging/   MessageBus (RabbitMessageBus by default; RedisMessageBus + RedisQueueWorker + LettuceListQueue when
+             takeoff.messaging.provider=redis)
+storage/     FileContentStore (DiskFileContentStore by default; DatabaseFileContentStore when takeoff.storage.type=database)
+service/     AuthService, DriverService, AccountService, AdminUserService, TemporaryPasswordGenerator,
+             OtpProducerService, OtpConsumerListener, OtpCodec,
              ApplicationService, AdminApplicationService, DocumentStorageService, NotificationService,
              NotificationProducerService, NotificationConsumerListener
 sms/         SmsSender, TwilioSmsSender, LoggingSmsSender, SmsDeliveryException (provider chosen in config/SmsConfig)
@@ -59,7 +64,9 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 - **Decision, notification and status change are one transaction.** The `APPLICATION_DECIDED` event is published to `notification.queue` only after that transaction commits (`TransactionOperations`), best-effort: if the broker is down the decision stands and the in-app notification already exists.
 - **Files.** `DocumentStorageService` checks the size, then identifies the file from its **magic bytes** (PDF, JPEG, PNG), never from the client's `Content-Type` or extension. It stores the bytes under a random UUID validated against a strict pattern, so user input never forms a path, and it keeps a sanitised display name separately. Downloads are `nosniff` and `no-store`. Files live in `takeoff.storage.upload-dir` (`UPLOAD_DIR`, default `./data/uploads`, git-ignored); `MAX_UPLOAD_BYTES` (default 5 MB) is the application-level limit, and `spring.servlet.multipart` (6 MB per file, 7 MB per request) is a slightly larger transport limit so an oversize file gets the friendly `413 FILE_TOO_LARGE` instead of a container error.
 - **Access control.** `SecurityConfig` requires `ROLE_APPLICANT_DRIVER` for `/api/v1/drivers/**` and `ROLE_LOGISTICS_ADMIN` for `/api/v1/admin/**`. A driver only ever loads their own application (the id comes from the JWT, not the URL); admins address applications by id.
-- **Admin password change.** `PUT /api/v1/admin/account/password` (`AdminAccountController` → `AccountService`). The account is always the token's own user. A wrong current password is a `400` field error, deliberately not a `401`: the SPA signs a user out on any 401, and here they are still properly signed in. The request record redacts both passwords in `toString()`.
+- **Changing your own password.** `PUT /api/v1/account/password` (`AccountController` → `AccountService`), for any role. The account is always the token's own user. A wrong current password is a `400` field error, deliberately not a `401`: the SPA signs a user out on any 401, and here they are still properly signed in. The request record redacts both passwords in `toString()`.
+- **Accounts with temporary passwords.** `AdminUserService` creates accounts (`POST /admin/users`), assigns roles (`PATCH /admin/users/{id}/role`) and issues new temporary passwords. `TemporaryPasswordGenerator` produces them from a `SecureRandom` (18 characters, every class present, no `Il1O0`); they are returned once and stored only as a BCrypt hash (`IssuedCredentialDto` redacts it in `toString()`). While `users.must_change_password` is set, `TakeoffUserDetails` grants only the `PASSWORD_CHANGE_REQUIRED` authority instead of a role, so `SecurityConfig` refuses every role-protected route with `403 PASSWORD_CHANGE_REQUIRED` and allows only `PUT /account/password`; that call clears the flag. Roles are read from the database on every request, so a role change is immediate. `temporary_password_expires_at` (default 72 h, `takeoff.accounts.temporary-password-hours`) is enforced at sign-in and on every request. Own-role changes and own-password resets are refused so the last administrator cannot be removed.
+- **Hosted mode.** The `MessageBus` and `FileContentStore` interfaces hide which transport and store are in use. Migrations exist twice, `db/migration` (MySQL, also run on H2 in tests) and `db/migration-postgresql`; `PostgresMigrationsTest` applies both and compares tables, columns and nullability so they cannot drift apart.
 - **Notifications.** `NotificationService` writes the in-app rows. `NotificationConsumerListener` consumes `APPLICATION_DECIDED` and texts the driver through the same `SmsSender` as OTPs; it drops malformed events and never sends to the fictional test phone.
 
 ## SMS delivery
@@ -78,7 +85,7 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 ## Tests
 
 ```bash
-./mvnw test              # 183 tests, no external services required
+./mvnw test              # 223 tests, no external services required
 ./mvnw clean package
 ```
 
@@ -86,7 +93,13 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 |---|---|
 | `PasswordPolicyTest` | policy rules, every special character, per-rule messages, message-escaping of `{}$` |
 | `SampleDocumentsTest` | the fictional `documentation/TEST_*` PDFs and PNGs are accepted by the real upload validator (real type from the bytes, under 5 MB), and each test driver has all three documents |
-| `AdminAccountIntegrationTest` | an admin changing their own password over the real security chain (own throw-away accounts): old password stops working and the new one works, wrong current password is a field error and changes nothing, weak or unchanged new password refused, required fields, drivers get 403 and anonymous callers 401, the request never prints the passwords |
+| `AccountManagementIntegrationTest` | creating accounts with a temporary password (shown once, stored hashed, never in the list), sign-in with it and the `403 PASSWORD_CHANGE_REQUIRED` lock until the person chooses their own, the same for a new administrator, expiry (also for an already-issued token), issuing a new one, role assignment taking effect immediately for an existing token, own-role and own-reset protection, validation, duplicates, drivers and anonymous callers refused, search and paging |
+| `TemporaryPasswordGeneratorTest` | 2,000 samples all meet the password policy, contain every character class, avoid misreadable characters, are all different, and are shuffled |
+| `RedisMessagingTest` | the Redis transport against an in-memory queue: topics map to the right lists, producers queue clean events and fail cleanly when Redis is down, the worker delivers in order, drops a poison message, survives an outage, and stops cleanly |
+| `DatabaseFileContentStoreTest` | documents kept in the database round-trip byte for byte (up to 5 MB), the storage service applies the same type and size rules, and the sample test documents survive |
+| `PostgresMigrationsTest` | the PostgreSQL migrations apply, and describe the same tables, columns and nullability as the MySQL ones |
+| `HostingSupportTest` | the public health probe (and nothing else is open), and the `demo` profile gets dev conveniences but not the built-in JWT secret |
+| `AccountPasswordIntegrationTest` | any signed-in person changing their own password over the real security chain (own throw-away accounts): old password stops working and the new one works, wrong current password is a field error and changes nothing, weak or unchanged new password refused, required fields, anonymous callers get 401, the request never prints the passwords |
 | `DriverAccountSeederTest` | the optional seeded driver: created phone-verified with a hashed password, email normalised, only in dev/test, never overwrites an existing email or phone, refuses weak passwords and incomplete config |
 | `AuthServiceTest` | register (duplicates, broker down), verify (valid/invalid/expired/consumed/attempt limit/hashed), login, resend cooldown and hourly send cap |
 | `OtpConsumerListenerTest` | fixed OTP for `+15550199`, random codes otherwise, invalidation order, malformed/unsupported events, bypass safety, SMS sent after the code is stored, never for the test phone, provider failures contained |

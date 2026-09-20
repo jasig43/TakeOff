@@ -1,0 +1,59 @@
+# HOSTED DEMO (SPRING_PROFILES_ACTIVE=demo), built for free hosting on Render.
+#
+# It differs from `dev` in one important way: there are NO built-in secrets. The JWT secret, database and queue all come
+# from the environment, and the app refuses to start without them. It differs from `prod` in that development
+# conveniences stay on so a reviewer can complete the OTP flow without an SMS gateway: the one-time code is printed to
+# the backend log, and the evaluator test phone (+15550199) always receives the code 123456.
+#
+# Required environment variables:
+#   DATABASE_URL       jdbc:postgresql://HOST:5432/DB
+#   DATABASE_USER, DATABASE_PASSWORD
+#   REDIS_URL          redis://HOST:6379  (Render "Key Value" internal URL)
+#   JWT_SECRET         at least 32 random characters
+#   FRONTEND_ORIGIN    the website's origin, e.g. https://take-off.vercel.app (comma-separated for several)
+# Optional: ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD / ADMIN_SEED_PHONE to create the first administrator, PORT.
+
+server:
+  port: ${PORT:8080}
+  # Render terminates TLS in front of the app; trust its forwarded headers.
+  forward-headers-strategy: framework
+
+spring:
+  autoconfigure:
+    # No RabbitMQ on the hosted demo: events go through Redis instead (takeoff.messaging.provider below).
+    exclude: org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      # Free PostgreSQL allows few connections and the free server has little memory.
+      maximum-pool-size: 5
+      minimum-idle: 1
+  flyway:
+    locations: classpath:db/migration-postgresql
+
+takeoff:
+  messaging:
+    provider: redis
+  redis:
+    url: ${REDIS_URL}
+  storage:
+    # The free web server has no persistent disk, so documents live in the database.
+    type: database
+  otp:
+    hash-codes: false
+    pepper: ${OTP_PEPPER:demo-pepper}
+    log-to-console: true
+    test-bypass:
+      enabled: true
+  admin:
+    seed:
+      enabled: ${ADMIN_SEED_ENABLED:false}
+      email: ${ADMIN_SEED_EMAIL:}
+      password: ${ADMIN_SEED_PASSWORD:}
+      phone-number: ${ADMIN_SEED_PHONE:+15550100}
+
+logging:
+  level:
+    com.takeoff: INFO

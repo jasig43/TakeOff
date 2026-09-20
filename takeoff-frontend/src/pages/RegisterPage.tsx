@@ -16,6 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { usePasswordValidation } from '../hooks/usePasswordValidation'
 import { useToast } from '../hooks/useToast'
 import { isValidEmail, isValidFullName, normalizePhone, phoneProblem } from '../utils/formValidation'
+import { homePathFor } from '../utils/homePath'
 import { savePendingVerification } from '../utils/tokenStorage'
 
 type FieldName = 'fullName' | 'email' | 'phoneNumber' | 'password' | 'confirmPassword' | 'termsAccepted'
@@ -47,7 +48,7 @@ export default function RegisterPage() {
   const passwordEval = usePasswordValidation(password)
 
   if (user) {
-    return <Navigate to={user.role === 'LOGISTICS_ADMIN' ? '/admin/dashboard' : '/driver/dashboard'} replace />
+    return <Navigate to={homePathFor(user)} replace />
   }
 
   const clientErrors: FieldErrors = {
