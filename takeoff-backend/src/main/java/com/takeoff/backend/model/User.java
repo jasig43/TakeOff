@@ -102,6 +102,11 @@ public class User {
 		return passwordHash;
 	}
 
+	/** Replaces the stored hash. Callers pass an already-encoded value, never a plain-text password. */
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
+	}
+
 	public Role getRole() {
 		return role;
 	}

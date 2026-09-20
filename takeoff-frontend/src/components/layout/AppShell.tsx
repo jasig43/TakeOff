@@ -4,7 +4,7 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 
 /**
- * Layout for signed-in pages: a left sidebar (a drawer on small screens), a fixed white header with the notification
+ * Layout for signed-in pages: a left sidebar (a drawer on small screens), a fixed frosted-glass header with the notification
  * bell across the top, and the page content beside and below them.
  */
 export function AppShell({ children }: { children: ReactNode }) {

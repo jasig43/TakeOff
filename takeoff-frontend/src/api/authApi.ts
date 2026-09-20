@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   AdminHealth,
+  ChangePasswordRequest,
   DriverProfile,
   JwtResponse,
   LoginRequest,
@@ -30,4 +31,8 @@ export const driverApi = {
 
 export const adminApi = {
   getHealth: () => apiClient.get<AdminHealth>('/admin/health').then((r) => r.data),
+
+  /** Resolves with nothing on success (204). A wrong current password is a 400 with a `currentPassword` field error. */
+  changePassword: (payload: ChangePasswordRequest) =>
+    apiClient.put('/admin/account/password', payload).then(() => undefined),
 }

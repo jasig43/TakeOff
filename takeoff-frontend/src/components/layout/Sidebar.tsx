@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ClipboardList, LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon } from 'lucide-react'
+import { ClipboardList, LayoutDashboard, LogOut, Menu, Settings, Users, X, type LucideIcon } from 'lucide-react'
 import type { Role } from '../../api/types'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../ui/Button'
@@ -21,6 +21,7 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   LOGISTICS_ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/applications', label: 'Applications', icon: Users },
+    { to: '/admin/settings', label: 'Settings', icon: Settings },
   ],
 }
 

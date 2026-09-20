@@ -50,12 +50,15 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'My application' })).toHaveAttribute('href', '/driver/application')
     expect(screen.queryByRole('link', { name: 'Applications' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /notifications/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument() // admin-only
   })
 
-  it('offers an administrator only admin destinations', () => {
+  it('offers an administrator only admin destinations, including Settings', () => {
     seedSession('LOGISTICS_ADMIN', 'TakeOFF Administrator')
-    renderSidebar('/admin/dashboard')
+    renderSidebar('/admin/settings')
 
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/admin/settings')
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Applications' })).toHaveAttribute('href', '/admin/applications')
     expect(screen.queryByRole('link', { name: 'My application' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /notifications/i })).not.toBeInTheDocument()

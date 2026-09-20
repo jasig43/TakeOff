@@ -123,10 +123,24 @@ body {
     backdrop-filter: blur(18px) saturate(140%);
   }
 
+  /*
+   * The fixed header. Same frosted glass as the sidebar and cards, but tinted with the page background and a little
+   * more opaque, so it blends into the dashboard yet stays readable when content scrolls underneath it.
+   */
+  .glass-bar {
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    border-bottom: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+
   /* Fallback keeps text readable where backdrop-filter is unsupported. */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
       background: var(--surface-strong);
+    }
+    .glass-bar {
+      background: var(--bg);
     }
   }
 

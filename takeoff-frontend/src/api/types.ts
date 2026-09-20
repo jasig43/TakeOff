@@ -66,6 +66,11 @@ export interface DriverProfile {
   createdAt: string
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface AdminHealth {
   status: string
   message: string

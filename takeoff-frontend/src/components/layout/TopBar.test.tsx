@@ -41,11 +41,12 @@ describe('top bar', () => {
     vi.resetAllMocks()
   })
 
-  it('is a white header fixed to the top of the screen so it stays put while the page scrolls', () => {
+  it('is a frosted-glass header fixed to the top of the screen so it stays put while the page scrolls', () => {
     renderBar('APPLICANT_DRIVER')
 
     const header = screen.getByRole('banner')
-    expect(header).toHaveClass('fixed', 'top-0', 'bg-surface-strong')
+    expect(header).toHaveClass('fixed', 'top-0', 'glass-bar')
+    expect(header).not.toHaveClass('bg-white', 'bg-surface-strong') // blends with the dashboard rather than a solid white bar
     // from the lg breakpoint it sits beside the sidebar, not under it
     expect(header).toHaveClass('lg:left-64')
   })

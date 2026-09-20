@@ -59,6 +59,7 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 - **Decision, notification and status change are one transaction.** The `APPLICATION_DECIDED` event is published to `notification.queue` only after that transaction commits (`TransactionOperations`), best-effort: if the broker is down the decision stands and the in-app notification already exists.
 - **Files.** `DocumentStorageService` checks the size, then identifies the file from its **magic bytes** (PDF, JPEG, PNG), never from the client's `Content-Type` or extension. It stores the bytes under a random UUID validated against a strict pattern, so user input never forms a path, and it keeps a sanitised display name separately. Downloads are `nosniff` and `no-store`. Files live in `takeoff.storage.upload-dir` (`UPLOAD_DIR`, default `./data/uploads`, git-ignored); `MAX_UPLOAD_BYTES` (default 5 MB) is the application-level limit, and `spring.servlet.multipart` (6 MB per file, 7 MB per request) is a slightly larger transport limit so an oversize file gets the friendly `413 FILE_TOO_LARGE` instead of a container error.
 - **Access control.** `SecurityConfig` requires `ROLE_APPLICANT_DRIVER` for `/api/v1/drivers/**` and `ROLE_LOGISTICS_ADMIN` for `/api/v1/admin/**`. A driver only ever loads their own application (the id comes from the JWT, not the URL); admins address applications by id.
+- **Admin password change.** `PUT /api/v1/admin/account/password` (`AdminAccountController` → `AccountService`). The account is always the token's own user. A wrong current password is a `400` field error, deliberately not a `401`: the SPA signs a user out on any 401, and here they are still properly signed in. The request record redacts both passwords in `toString()`.
 - **Notifications.** `NotificationService` writes the in-app rows. `NotificationConsumerListener` consumes `APPLICATION_DECIDED` and texts the driver through the same `SmsSender` as OTPs; it drops malformed events and never sends to the fictional test phone.
 
 ## SMS delivery
@@ -77,13 +78,14 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 ## Tests
 
 ```bash
-./mvnw test              # 174 tests, no external services required
+./mvnw test              # 181 tests, no external services required
 ./mvnw clean package
 ```
 
 | Class | Focus |
 |---|---|
 | `PasswordPolicyTest` | policy rules, every special character, per-rule messages, message-escaping of `{}$` |
+| `AdminAccountIntegrationTest` | an admin changing their own password over the real security chain (own throw-away accounts): old password stops working and the new one works, wrong current password is a field error and changes nothing, weak or unchanged new password refused, required fields, drivers get 403 and anonymous callers 401, the request never prints the passwords |
 | `DriverAccountSeederTest` | the optional seeded driver: created phone-verified with a hashed password, email normalised, only in dev/test, never overwrites an existing email or phone, refuses weak passwords and incomplete config |
 | `AuthServiceTest` | register (duplicates, broker down), verify (valid/invalid/expired/consumed/attempt limit/hashed), login, resend cooldown and hourly send cap |
 | `OtpConsumerListenerTest` | fixed OTP for `+15550199`, random codes otherwise, invalidation order, malformed/unsupported events, bypass safety, SMS sent after the code is stored, never for the test phone, provider failures contained |
