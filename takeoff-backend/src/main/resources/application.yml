@@ -67,6 +67,8 @@ takeoff:
     expiration-seconds: ${OTP_EXPIRATION_SECONDS:300}
     resend-cooldown-seconds: ${OTP_RESEND_COOLDOWN_SECONDS:30}
     max-attempts: ${OTP_MAX_ATTEMPTS:5}
+    # Real SMS costs money and can be abused: at most this many codes per phone number per hour.
+    max-sends-per-hour: ${OTP_MAX_SENDS_PER_HOUR:5}
     # Store OTPs as HMAC-SHA256 hashes (requires OTP_PEPPER). Disabled only in the dev/test profiles.
     hash-codes: true
     pepper: ${OTP_PEPPER:}
@@ -81,6 +83,18 @@ takeoff:
     exchange: ${OTP_EXCHANGE:takeoff.exchange}
     queue: ${OTP_QUEUE:otp.queue}
     routing-key: ${OTP_ROUTING_KEY:otp.routing.key}
+
+  sms:
+    # How verification codes reach the user's phone: "twilio" sends real SMS to any number;
+    # "none" sends nothing (in the dev profile the code is printed to the backend console instead).
+    provider: ${SMS_PROVIDER:none}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      # Sender: a Twilio phone number, or a Messaging Service SID (which wins if both are set).
+      from-number: ${TWILIO_FROM_NUMBER:}
+      messaging-service-sid: ${TWILIO_MESSAGING_SERVICE_SID:}
+      api-base-url: https://api.twilio.com
 
   admin:
     seed:

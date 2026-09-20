@@ -372,6 +372,34 @@ class AuthServiceTest {
 		verify(producer, never()).publishOtpGenerate(anyLong(), anyString());
 	}
 
+	@Test
+	void resendIsCappedPerHourBecauseRealSmsCostsMoney() {
+		User user = applicant(false);
+		when(users.findByEmail("driver@example.com")).thenReturn(Optional.of(user));
+		when(otpTokens.findFirstByUserIdOrderByIdDesc(42L)).thenReturn(
+				Optional.of(token("482913", TestFixtures.CLOCK.instant().plusSeconds(120), false, 0))); // cooldown passed
+		when(otpTokens.countByUserIdAndCreatedAtAfter(eq(42L), any(Instant.class))).thenReturn(5L); // limit is 5
+
+		ApiException ex = catchApiException(() -> service.resendOtp(new ResendOtpRequest("driver@example.com")));
+
+		assertThat(ex.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+		assertThat(ex.getCode()).isEqualTo("OTP_SEND_LIMIT");
+		verify(producer, never()).publishOtpGenerate(anyLong(), anyString());
+	}
+
+	@Test
+	void resendIsStillAllowedJustUnderTheHourlyCap() {
+		User user = applicant(false);
+		when(users.findByEmail("driver@example.com")).thenReturn(Optional.of(user));
+		when(otpTokens.findFirstByUserIdOrderByIdDesc(42L)).thenReturn(
+				Optional.of(token("482913", TestFixtures.CLOCK.instant().plusSeconds(120), false, 0)));
+		when(otpTokens.countByUserIdAndCreatedAtAfter(eq(42L), any(Instant.class))).thenReturn(4L);
+
+		service.resendOtp(new ResendOtpRequest("driver@example.com"));
+
+		verify(producer).publishOtpGenerate(42L, PHONE);
+	}
+
 	private static ApiException catchApiException(Runnable action) {
 		try {
 			action.run();

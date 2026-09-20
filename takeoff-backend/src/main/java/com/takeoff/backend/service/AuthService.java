@@ -171,6 +171,13 @@ public class AuthService {
 			}
 		});
 
+		// Real SMS costs money and can be abused, so cap how many codes one number can be sent per hour.
+		long sentLastHour = otpTokens.countByUserIdAndCreatedAtAfter(user.getId(), clock.instant().minus(Duration.ofHours(1)));
+		if (sentLastHour >= otpSettings.maxSendsPerHour()) {
+			throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "OTP_SEND_LIMIT",
+					"Too many verification codes were requested for this number. Please try again in an hour.");
+		}
+
 		otpProducer.publishOtpGenerate(user.getId(), user.getPhoneNumber()); // OtpDispatchException -> 503
 		return new OtpResendResponse(otpSettings.expirationSeconds(), true, RESEND_MESSAGE);
 	}

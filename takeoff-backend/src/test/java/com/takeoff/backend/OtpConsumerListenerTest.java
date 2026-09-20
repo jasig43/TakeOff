@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -36,6 +39,8 @@ import com.takeoff.backend.repository.OtpTokenRepository;
 import com.takeoff.backend.repository.UserRepository;
 import com.takeoff.backend.service.OtpCodec;
 import com.takeoff.backend.service.OtpConsumerListener;
+import com.takeoff.backend.sms.SmsDeliveryException;
+import com.takeoff.backend.sms.SmsSender;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -49,12 +54,14 @@ class OtpConsumerListenerTest {
 	UserRepository users;
 	@Mock
 	OtpTokenRepository otpTokens;
+	@Mock
+	SmsSender sms;
 
 	private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
 	private OtpConsumerListener listener(boolean bypassEnabled, String... profiles) {
 		TakeoffProperties properties = TestFixtures.properties(false, bypassEnabled);
-		return new OtpConsumerListener(users, otpTokens, new OtpCodec(properties, TestFixtures.environment("test")),
+		return new OtpConsumerListener(users, otpTokens, new OtpCodec(properties, TestFixtures.environment("test")), sms,
 				objectMapper, TransactionOperations.withoutTransaction(), properties, TestFixtures.environment(profiles),
 				TestFixtures.CLOCK);
 	}
@@ -164,6 +171,79 @@ class OtpConsumerListenerTest {
 		listener.onMessage(json("{\"eventType\":\"OTP_GENERATE\"}")); // no userId
 
 		verify(otpTokens, never()).save(any());
+	}
+
+	@Test
+	void theCodeIsTextedToTheUsersPhoneAfterItHasBeenStored() throws Exception {
+		when(users.findById(7L)).thenReturn(Optional.of(user("+263771234567")));
+
+		listener(true, "test").onMessage(eventFor(7L, "+263771234567"));
+
+		OtpToken stored = savedToken();
+		ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+		InOrder order = inOrder(otpTokens, sms);
+		order.verify(otpTokens).save(any(OtpToken.class));
+		order.verify(sms).send(eq("+263771234567"), body.capture());
+		assertThat(body.getValue()).contains(stored.getCode()).contains("expires in 5 minutes").contains("TakeOFF");
+	}
+
+	@Test
+	void everyNewCodeIsTextedAndIsTheSameCodeThatWasStored() throws Exception {
+		when(users.findById(7L)).thenReturn(Optional.of(user("+15550123")));
+		OtpConsumerListener listener = listener(true, "test");
+
+		listener.onMessage(eventFor(7L, "+15550123"));
+		listener.onMessage(eventFor(7L, "+15550123"));
+
+		ArgumentCaptor<OtpToken> stored = ArgumentCaptor.forClass(OtpToken.class);
+		verify(otpTokens, times(2)).save(stored.capture());
+		ArgumentCaptor<String> texts = ArgumentCaptor.forClass(String.class);
+		verify(sms, times(2)).send(eq("+15550123"), texts.capture());
+		for (int i = 0; i < 2; i++) {
+			assertThat(texts.getAllValues().get(i)).contains(stored.getAllValues().get(i).getCode());
+		}
+	}
+
+	@Test
+	void theFixedTestPhoneCodeIsNeverTexted() throws Exception {
+		when(users.findById(7L)).thenReturn(Optional.of(user(TEST_PHONE)));
+
+		listener(true, "test").onMessage(eventFor(7L, TEST_PHONE));
+
+		verify(otpTokens).save(any(OtpToken.class)); // still stored, so the fixed code works
+		verify(sms, never()).send(anyString(), anyString());
+	}
+
+	@Test
+	void aFailedSmsDoesNotFailTheListenerAndTheStoredCodeIsKept() throws Exception {
+		when(users.findById(7L)).thenReturn(Optional.of(user("+263771234567")));
+		doThrow(new SmsDeliveryException("Twilio rejected the message (HTTP 400, Twilio error 21211)")).when(sms)
+			.send(anyString(), anyString());
+		OtpConsumerListener listener = listener(true, "test");
+
+		assertThatCode(() -> listener.onMessage(eventFor(7L, "+263771234567"))).doesNotThrowAnyException();
+
+		verify(otpTokens).save(any(OtpToken.class)); // the user can still press "Resend code"
+	}
+
+	@Test
+	void anUnexpectedSmsErrorIsAlsoContained() throws Exception {
+		when(users.findById(7L)).thenReturn(Optional.of(user("+263771234567")));
+		doThrow(new IllegalStateException("boom")).when(sms).send(anyString(), anyString());
+		OtpConsumerListener listener = listener(true, "test");
+
+		assertThatCode(() -> listener.onMessage(eventFor(7L, "+263771234567"))).doesNotThrowAnyException();
+	}
+
+	@Test
+	void nothingIsTextedForMalformedOrUnknownUserEvents() throws Exception {
+		when(users.findById(99L)).thenReturn(Optional.empty());
+		OtpConsumerListener listener = listener(true, "test");
+
+		listener.onMessage(json("{ not json"));
+		listener.onMessage(eventFor(99L, "+263771234567"));
+
+		verify(sms, never()).send(anyString(), anyString());
 	}
 
 	@Test

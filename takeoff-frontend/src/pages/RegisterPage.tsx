@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { UserPlus } from 'lucide-react'
 import { authApi } from '../api/authApi'
 import { isApiError } from '../api/client'
-import { DevOtpHint } from '../components/auth/DevOtpHint'
 import { PasswordChecklist } from '../components/auth/PasswordChecklist'
 import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter'
 import { PageShell } from '../components/layout/PageShell'
@@ -274,15 +273,12 @@ export default function RegisterPage() {
             </div>
           </form>
 
-          <div className="mt-8 space-y-6">
-            <DevOtpHint />
-            <p className="text-center text-sm text-muted">
-              Already have an account?{' '}
-              <Link to="/" className="font-semibold text-brand underline-offset-4 hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="mt-8 text-center text-sm text-muted">
+            Already have an account?{' '}
+            <Link to="/" className="font-semibold text-brand underline-offset-4 hover:underline">
+              Sign in
+            </Link>
+          </p>
         </GlassCard>
       </motion.div>
     </PageShell>

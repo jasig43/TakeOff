@@ -20,7 +20,8 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 - Applicant registration with a strict password policy enforced on **both** client and server.
 - OTP workflow over RabbitMQ: register, event published, listener issues a 6-digit code, verify.
 - Six-digit OTP input (auto-advance, paste, countdown ring, resend) with confetti on success.
-- Fixed OTP for the evaluator test phone `+15550199` (development only).
+- Real SMS delivery of the one-time code to any phone number through Twilio (opt-in; see [SMS delivery](#sms-delivery)), with a per-number hourly send cap.
+- Fixed OTP for the evaluator test phone `+15550199` (development only; nothing about it is shown in the UI).
 - Stateless JWT authentication with `ROLE_APPLICANT_DRIVER` / `ROLE_LOGISTICS_ADMIN` authorities.
 - RBAC enforced by the backend; the frontend adds route guards as a convenience only.
 - Flyway migrations, consistent JSON error responses, accessibility and reduced-motion support.
@@ -82,7 +83,7 @@ Nothing secret is committed. Copy the templates and adjust:
 |---|---|
 | [`.env.example`](.env.example) | docker-compose variables (DB/RabbitMQ credentials, host ports) |
 | [`takeoff-backend/.env.example`](takeoff-backend/.env.example) | every backend environment variable, with notes |
-| [`takeoff-frontend/.env.example`](takeoff-frontend/.env.example) | `VITE_API_BASE_URL` and `VITE_SHOW_DEV_HINTS` |
+| [`takeoff-frontend/.env.example`](takeoff-frontend/.env.example) | `VITE_API_BASE_URL` |
 
 Spring Boot does not read `.env` files itself; export the variables in your shell or IDE run configuration. The `dev` profile ships throw-away local defaults that match `docker-compose.yml`, so **no exports are needed for local development**. The `prod` profile requires everything explicitly (notably `JWT_SECRET` and `OTP_PEPPER`).
 
@@ -173,6 +174,33 @@ Base path `/api/v1`. All errors share one JSON shape:
 - The auth filter also confirms the user still exists, is enabled, and matches the token subject, so disabling an account takes effect immediately.
 - OTPs: 6 digits, valid `OTP_EXPIRATION_SECONDS` (default 300), max `OTP_MAX_ATTEMPTS` wrong guesses (default 5), only the newest code works, resend cooldown 30 s. Outside dev/test they are stored as HMAC-SHA256 hashes (`OTP_PEPPER`).
 - Applicants cannot log in until their phone is verified.
+- At most `OTP_MAX_SENDS_PER_HOUR` codes (default 5) are issued per phone number per hour (`429 OTP_SEND_LIMIT`), because real SMS costs money and can be abused.
+
+### SMS delivery
+
+The code is texted to the number the user registered with, to **any** international E.164 number, through [Twilio](https://www.twilio.com/sms). The provider is chosen with `SMS_PROVIDER`:
+
+| `SMS_PROVIDER` | Behaviour |
+|---|---|
+| `none` (default) | Nothing is sent. In the `dev` profile the code is printed to the backend console; in any other profile the code is **not delivered** and a warning is logged at startup. |
+| `twilio` | The code is sent as an SMS. Requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and a sender: `TWILIO_FROM_NUMBER` (a Twilio number) or `TWILIO_MESSAGING_SERVICE_SID` (wins if both are set). The app refuses to start with a clear message if any are missing. |
+
+Set them **outside the repo**: as environment variables, or for local use in `takeoff-backend/config/application.properties` (git-ignored):
+
+```properties
+takeoff.sms.provider=twilio
+takeoff.sms.twilio.account-sid=AC...
+takeoff.sms.twilio.auth-token=...
+takeoff.sms.twilio.from-number=+1...
+```
+
+How it behaves:
+
+- The SMS is sent by the RabbitMQ listener **after** the code is stored and its database transaction commits, so a slow provider never holds a transaction open. Timeouts are 5 s to connect and 10 s to read.
+- If Twilio rejects the message or is unreachable, the failure is logged (HTTP status and Twilio error code only, never the number, the code or credentials). The stored code stays valid and the user can press **Resend code**. The UI cannot tell the SMS failed, because sending is asynchronous.
+- The fixed test-phone code is never texted.
+- Twilio account requirements are Twilio's, not this app's: a *trial* account can only text numbers you have verified in the Twilio console, and each destination country must be enabled under *Messaging → Geo permissions*. Sending to arbitrary numbers needs a paid account, and carriers in some countries require a registered sender ID.
+- Adding another provider means one class implementing `SmsSender` plus one case in `SmsConfig`.
 
 ## 15. Password rules
 
@@ -196,7 +224,7 @@ Public registration always yields `APPLICANT_DRIVER`; a `role` field in the requ
 
 ## 17. Test account and OTP instructions
 
-> **Development and evaluator testing only. The fixed OTP is disabled outside the `dev`/`test` profiles and the backend refuses to start if it is enabled elsewhere. Never enable it in production.**
+> **Development and evaluator testing only. The fixed OTP is disabled outside the `dev`/`test` profiles and the backend refuses to start if it is enabled elsewhere. Never enable it in production. The UI does not mention it; this section is the only place it is documented.**
 
 | | |
 |---|---|
@@ -249,7 +277,10 @@ cd takeoff-backend
 
 ## 21. Known MVP limitations
 
-- **No SMS gateway.** The code is only logged to the console in dev/test. In production nothing delivers it yet; wire an SMS provider into `OtpConsumerListener` before real use.
+- **SMS delivery is implemented but has not been run against real Twilio** (no account or credentials were available while building it). It is unit-tested against a mock HTTP server that checks the exact request Twilio expects (endpoint, Basic auth, form fields) and the failure handling, so expect to verify it once with your own account and a number you control.
+- SMS is opt-in: with `SMS_PROVIDER=none` outside `dev`, codes are not delivered at all.
+- A failed SMS is only logged; the user is not told (they can press Resend). There is no delivery-receipt tracking or automatic retry.
+- Sending real SMS to arbitrary numbers invites cost-abuse (SMS pumping). Only a per-number hourly cap exists; there is no rate limit per IP or CAPTCHA on sign-up, and no allow-list of destination countries. Add those before a public launch.
 - A 6-digit OTP is inherently low-entropy; expiry and the attempt limit are the real protection (see `OtpCodec`).
 - The JWT is kept in `localStorage` (XSS trade-off; no refresh token). Planned: short-lived access token + httpOnly refresh cookie.
 - No dead-letter queue: a message that fails processing is dropped and the user can resend.

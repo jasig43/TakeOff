@@ -19,9 +19,6 @@ Copy `.env.example` to `.env.local`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8080/api/v1` | Backend base URL |
-| `VITE_SHOW_DEV_HINTS` | `false` | Show the evaluator OTP hint in non-dev builds (always shown under `npm run dev`) |
-
-The hint (test phone `+15550199` → OTP `123456`) is only honoured by a backend running in dev/test mode.
 
 ## Routes
 

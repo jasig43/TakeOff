@@ -6,7 +6,6 @@ import { PartyPopper, RefreshCw, Smartphone } from 'lucide-react'
 import { authApi } from '../api/authApi'
 import { isApiError } from '../api/client'
 import { CountdownRing } from '../components/auth/CountdownRing'
-import { DevOtpHint } from '../components/auth/DevOtpHint'
 import { OTP_LENGTH, OtpInput } from '../components/auth/OtpInput'
 import { PageShell } from '../components/layout/PageShell'
 import { Button } from '../components/ui/Button'
@@ -196,10 +195,6 @@ function OtpVerificationForm({ pending }: { pending: PendingVerification }) {
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
                   {cooldown.remainingSeconds > 0 ? `Resend code in ${cooldown.remainingSeconds}s` : 'Resend code'}
                 </Button>
-              </div>
-
-              <div className="mt-6 text-left">
-                <DevOtpHint />
               </div>
             </>
           )}
