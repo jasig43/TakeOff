@@ -95,7 +95,7 @@ Uploaded documents are private: they are stored under generated names (never the
 TakeOff/
 ├── takeoff-frontend/      React SPA
 ├── takeoff-backend/       Spring Boot API
-├── documentation/         Project plan and flow-state diagram (PDF)
+├── documentation/         Project plan and flow-state diagram (PDF), plus fictional TEST_* driver documents
 ├── docker-compose.yml     MySQL + RabbitMQ for local development
 ├── .env.example           Variables for docker-compose
 ├── .gitignore
@@ -307,6 +307,8 @@ Public registration always yields `APPLICANT_DRIVER`; a `role` field in the requ
 4. For any other phone number, the generated code is printed in the backend console: `[DEV ONLY] Verification code for user …`.
 
 **Dev admin (seeded only under the `dev` profile):** `admin@takeoff.local` / `Dev-Admin-Password#2026`, signed in with the same form at http://localhost:5173 (it opens the admin dashboard). This is a throw-away local credential; production admins must be seeded from your own secrets.
+
+**Test documents for the driver flow.** [`documentation/TEST_Driver_Profiles_and_Documents.md`](documentation/TEST_Driver_Profiles_and_Documents.md) lists two fictional test drivers (values to type into each application step) and the matching files to upload: a driver's licence (PNG), a vehicle registration (PDF) and an insurance certificate (PDF) each, named `TEST_01_...` and `TEST_02_...`. Everything in them is invented and stamped "SPECIMEN - TEST DATA ONLY"; no real identity or document details are used, and `SampleDocumentsTest` checks that the upload validator accepts every file.
 
 **Seeded test driver (optional, `dev`/`test` profiles only):** to sign in as a driver without registering and receiving an OTP, enable a ready-made, phone-verified driver account. It is off by default and never has a built-in password; supply one in your own environment or in the git-ignored `takeoff-backend/config/application.properties`:
 

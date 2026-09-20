@@ -78,13 +78,14 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 ## Tests
 
 ```bash
-./mvnw test              # 181 tests, no external services required
+./mvnw test              # 183 tests, no external services required
 ./mvnw clean package
 ```
 
 | Class | Focus |
 |---|---|
 | `PasswordPolicyTest` | policy rules, every special character, per-rule messages, message-escaping of `{}$` |
+| `SampleDocumentsTest` | the fictional `documentation/TEST_*` PDFs and PNGs are accepted by the real upload validator (real type from the bytes, under 5 MB), and each test driver has all three documents |
 | `AdminAccountIntegrationTest` | an admin changing their own password over the real security chain (own throw-away accounts): old password stops working and the new one works, wrong current password is a field error and changes nothing, weak or unchanged new password refused, required fields, drivers get 403 and anonymous callers 401, the request never prints the passwords |
 | `DriverAccountSeederTest` | the optional seeded driver: created phone-verified with a hashed password, email normalised, only in dev/test, never overwrites an existing email or phone, refuses weak passwords and incomplete config |
 | `AuthServiceTest` | register (duplicates, broker down), verify (valid/invalid/expired/consumed/attempt limit/hashed), login, resend cooldown and hourly send cap |
