@@ -2,12 +2,6 @@ package com.takeoff.backend.sms;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-/**
- * Used when {@code takeoff.sms.provider=none}: nothing is sent. In dev/test that is normal (the code is printed to
- * the console by the OTP listener); anywhere else it is a misconfiguration, so it says so loudly. The message
- * body, which contains the code, is never logged here.
- */
 public class LoggingSmsSender implements SmsSender {
 
 	private static final Logger log = LoggerFactory.getLogger(LoggingSmsSender.class);
