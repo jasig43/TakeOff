@@ -36,3 +36,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# Machine-local Spring Boot overrides (e.g. JWT secret): never committed
+takeoff-backend/config/
