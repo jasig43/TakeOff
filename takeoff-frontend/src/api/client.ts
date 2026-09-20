@@ -8,6 +8,7 @@ const DEFAULT_BASE_URL = 'http://localhost:8080/api/v1'
 export const UNAUTHORIZED_EVENT = 'takeoff:unauthorized'
 
 const NETWORK_MESSAGE = "We couldn't reach the TakeOFF server. Check your connection and try again."
+const TIMEOUT_MESSAGE = 'The TakeOFF server is taking longer than usual to respond. It may be waking up, so please try again in a moment.'
 const SERVER_MESSAGE = 'Something went wrong on our side. Please try again in a moment.'
 const FALLBACK_MESSAGE = 'Something went wrong. Please try again.'
 
@@ -41,7 +42,8 @@ export function isApiError(error: unknown): error is ApiError {
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: (import.meta.env.VITE_API_BASE_URL as string | undefined) || DEFAULT_BASE_URL,
-  timeout: 15_000,
+  // Long enough for a free-tier host to wake from idle (about a minute); genuine connection failures still fail fast.
+  timeout: 65_000,
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 })
 
@@ -68,7 +70,8 @@ function toApiError(error: unknown): ApiError {
   if (!axiosError.response) {
     // Offline, DNS failure, CORS rejection, refused connection or timeout.
     if (import.meta.env.DEV) console.debug('[api] network error', axiosError.message)
-    return new ApiError({ message: NETWORK_MESSAGE, isNetworkError: true })
+    const timedOut = axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT'
+    return new ApiError({ message: timedOut ? TIMEOUT_MESSAGE : NETWORK_MESSAGE, isNetworkError: true })
   }
 
   const { status, data } = axiosError.response
