@@ -4,6 +4,8 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 
 > **Status: MVP Phase 2.** Everything in Phase 1 (sign-in landing page, registration, OTP verification, JWT authentication, RBAC) plus the full onboarding workflow: driver application wizard, document uploads, submission tracking, the administrator review portal and driver notifications. See [Application workflow](#application-workflow) and [Planned next phases](#22-planned-next-phases).
 
+> **Live demo:** https://take-off-seven.vercel.app (API: https://takeoff-backend-8lkt.onrender.com). It runs on free hosting, so the API sleeps after 15 minutes idle and the first request takes about a minute. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for how it is built, how to complete the OTP step, and the fictional test drivers and documents in [`documentation/`](documentation/TEST_Driver_Profiles_and_Documents.md).
+
 ## 1. Project overview
 
 | | |

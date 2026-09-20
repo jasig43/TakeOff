@@ -1,5 +1,23 @@
 # Hosted demo: deployment guide
 
+## The current deployment
+
+| | |
+|---|---|
+| **Website** (Vercel project `take-off`) | https://take-off-seven.vercel.app (also https://take-off-jasig43s-projects.vercel.app) |
+| **API** (Render web service `takeoff-backend`, Singapore, free) | https://takeoff-backend-8lkt.onrender.com, health check `GET /api/v1/health` |
+| **Database** (Render Postgres `takeoff-db`, free) | internal only; the allow-list for outside connections is empty |
+| **Queue** (Render Key Value `TakeOFF`, free) | internal only |
+| **First administrator** | `admin@takeoff.co.zw`; the password is set in the Render service's environment and is not in this repository |
+
+**Completing the OTP step as a reviewer:** register a driver with the evaluator test number `+15550199` and enter `123456`,
+or register with any other number and read the one-time code from the API's log (Render dashboard > `takeoff-backend` >
+Logs, look for `[DEV ONLY] Verification code`). The test number can be used by one account.
+
+**Deploying a new commit:** the API was added to Render from the public repository URL, so Render does not receive push
+notifications. After pushing, use *Manual Deploy* on the service (or the Render API), or connect the GitHub app to make it
+automatic. Vercel is connected to the repository and deploys every push to `main` by itself.
+
 TakeOFF runs locally on **MySQL + RabbitMQ** (see the main README). The free hosted demo instead runs on services that
 have a free tier:
 
