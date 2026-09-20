@@ -35,7 +35,7 @@ The hint (test phone `+15550199` → OTP `123456`) is only honoured by a backend
 src/
   api/          axios client (token interceptor, error normalisation), authApi, types
   components/   layout/  auth/  ui/
-  context/      AuthContext, ThemeContext, ToastContext (+ *.ts context objects)
+  context/      AuthContext, ToastContext (+ *.ts context objects)
   hooks/        usePasswordValidation, useCountdown, useApiResource, …
   pages/        one component per route (lazy-loaded)
   routes/       AppRouter, ProtectedRoute
@@ -49,8 +49,9 @@ src/
 - **API client.** Errors are normalised to `ApiError` (`status`, `code`, `fieldErrors`). Network failures and 5xx show generic messages; details go to the console only in dev. A 401 on a token-bearing, non-auth request clears the session once and signs the user out; auth endpoints are excluded so a wrong password can never trigger a sign-out loop.
 - **Accessibility.** Labelled inputs with errors linked by `aria-describedby`, visible focus, skip link, state never conveyed by colour alone (icons + text), polite live regions for password strength and toasts, OTP usable by keyboard and paste.
 - **Motion.** `MotionConfig reducedMotion="user"` plus a CSS `prefers-reduced-motion` reset; confetti is disabled for reduced motion.
-- **Themes.** Dark/light via a `dark` class on `<html>`, applied before first paint from `localStorage` or the OS preference.
+- **Theme.** Follows the operating system: light and dark colours are CSS variables switched by `@media (prefers-color-scheme: dark)` (`src/index.css`), so it updates live when the OS setting changes, has no flash on load, stores nothing, and has no toggle.
+- **Layout.** Public pages (sign in, sign up, OTP) have no navigation. Signed-in pages use `AppShell`: a fixed left `Sidebar` from the `lg` breakpoint, and below that a slide-in drawer opened by a small floating menu button (focus moves into the drawer, Tab is kept inside it, Escape closes it and returns focus). There is no top bar.
 
 ## Tests
 
-Vitest + Testing Library: password rules (every special character, boundaries, strength levels), form validators, `OtpInput` (numeric only, auto-advance, backspace, paste, arrows), `ProtectedRoute` role matrix and expired sessions, and the sign-in page (driver and admin redirects, unverified phone, bad credentials, button gating).
+Vitest + Testing Library: password rules (every special character, boundaries, strength levels), form validators, `OtpInput` (numeric only, auto-advance, backspace, paste, arrows), `ProtectedRoute` role matrix and expired sessions, the sign-in page (driver and admin redirects, unverified phone, bad credentials, button gating), and the sidebar (current page, user and role, sign out, phone drawer open/close, Escape, focus handling).

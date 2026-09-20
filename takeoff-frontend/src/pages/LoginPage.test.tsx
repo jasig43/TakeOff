@@ -6,7 +6,6 @@ import { authApi } from '../api/authApi'
 import { ApiError } from '../api/client'
 import type { JwtResponse, Role } from '../api/types'
 import { AuthProvider } from '../context/AuthContext'
-import { ThemeProvider } from '../context/ThemeContext'
 import { ToastProvider } from '../context/ToastContext'
 import LoginPage from './LoginPage'
 
@@ -23,21 +22,19 @@ function jwtFor(role: Role): JwtResponse {
 
 function renderLanding() {
   return render(
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <MemoryRouter initialEntries={['/']}>
-            <Routes>
-              <Route path="/" element={<LoginPage />} />
-              <Route path="/register" element={<p>register page</p>} />
-              <Route path="/verify-otp" element={<p>verify otp page</p>} />
-              <Route path="/driver/dashboard" element={<p>driver dashboard</p>} />
-              <Route path="/admin/dashboard" element={<p>admin dashboard</p>} />
-            </Routes>
-          </MemoryRouter>
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>,
+    <ToastProvider>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/register" element={<p>register page</p>} />
+            <Route path="/verify-otp" element={<p>verify otp page</p>} />
+            <Route path="/driver/dashboard" element={<p>driver dashboard</p>} />
+            <Route path="/admin/dashboard" element={<p>admin dashboard</p>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </ToastProvider>,
   )
 }
 

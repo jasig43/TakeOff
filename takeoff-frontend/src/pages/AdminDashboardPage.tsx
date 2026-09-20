@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { ClipboardList, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 import { adminApi } from '../api/authApi'
-import { PageShell } from '../components/layout/PageShell'
+import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
   const { data: health, error, loading, reload } = useApiResource(adminApi.getHealth, 'We could not reach the admin service.')
 
   return (
-    <PageShell>
+    <AppShell>
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
           <h1 className="font-display text-3xl font-bold">Admin dashboard</h1>
@@ -80,6 +80,6 @@ export default function AdminDashboardPage() {
           </GlassCard>
         </div>
       </div>
-    </PageShell>
+    </AppShell>
   )
 }

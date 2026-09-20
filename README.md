@@ -16,7 +16,7 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 
 ## 2. MVP Phase 1 features
 
-- Clean landing page that is just the sign-in form (with a "Sign up" link), in dark and light glassmorphism themes. One form serves drivers and administrators; after login each lands on their own dashboard.
+- Clean landing page that is just the sign-in form (with a "Sign up" link), in glassmorphism styling that follows your system's light/dark setting (no toggle). One form serves drivers and administrators; after login each lands on their own dashboard, with a left sidebar for navigation (a slide-in drawer on phones).
 - Applicant registration with a strict password policy enforced on **both** client and server.
 - OTP workflow over RabbitMQ: register, event published, listener issues a 6-digit code, verify.
 - Six-digit OTP input (auto-advance, paste, countdown ring, resend) with confetti on success.

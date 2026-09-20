@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { MeshBackground } from './MeshBackground'
-import { Navbar } from './Navbar'
 
 interface PageShellProps {
   children: ReactNode
@@ -8,9 +7,10 @@ interface PageShellProps {
   centered?: boolean
 }
 
+/** Layout for public pages (sign in, sign up, OTP): no navigation, just the content on the backdrop. */
 export function PageShell({ children, centered = false }: PageShellProps) {
   return (
-    // overflow-x-clip (not -hidden): hidden makes this a scroll container, which silently breaks the sticky navbar.
+    // overflow-x-clip (not -hidden): hidden makes this a scroll container, which can silently break sticky/fixed children.
     <div className="relative flex min-h-screen flex-col overflow-x-clip">
       <a
         href="#main"
@@ -19,17 +19,13 @@ export function PageShell({ children, centered = false }: PageShellProps) {
         Skip to main content
       </a>
       <MeshBackground />
-      <Navbar />
       <main
         id="main"
         tabIndex={-1}
-        className={`mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-8 outline-none sm:px-6 ${centered ? 'flex items-center justify-center' : ''}`}
+        className={`mx-auto w-full max-w-6xl flex-1 px-4 py-10 outline-none sm:px-6 ${centered ? 'flex items-center justify-center' : ''}`}
       >
         {children}
       </main>
-      <footer className="mx-auto w-full max-w-6xl px-4 pb-8 text-center text-sm text-muted sm:px-6">
-        <p>© {new Date().getFullYear()} TakeOFF</p>
-      </footer>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { BadgeCheck, CircleCheck, Clock, Mail, Phone, RefreshCw } from 'lucide-react'
 import { driverApi } from '../api/authApi'
-import { PageShell } from '../components/layout/PageShell'
+import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -26,7 +26,7 @@ export default function DriverDashboardPage() {
   const percent = Math.round((completed / STAGES.length) * 100)
 
   return (
-    <PageShell>
+    <AppShell>
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
           <h1 className="font-display text-3xl font-bold">
@@ -131,6 +131,6 @@ export default function DriverDashboardPage() {
           </motion.div>
         )}
       </div>
-    </PageShell>
+    </AppShell>
   )
 }
