@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
@@ -36,12 +37,13 @@ public class RedisQueueWorker implements SmartLifecycle {
 	private final List<Thread> threads = new ArrayList<>();
 	private volatile boolean running;
 
+	@Autowired
 	public RedisQueueWorker(ListQueue queue, TakeoffProperties properties, OtpConsumerListener otp,
 			NotificationConsumerListener notification) {
 		this(queue, properties, otp::handle, notification::handle);
 	}
 
-	/** Test seam: any handlers can be plugged in. */
+	/** Test seam: any handlers can be plugged in. Not used by Spring (the constructor above is marked @Autowired). */
 	RedisQueueWorker(ListQueue queue, TakeoffProperties properties, Consumer<byte[]> otpHandler,
 			Consumer<byte[]> notificationHandler) {
 		this.queue = queue;
