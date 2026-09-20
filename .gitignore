@@ -39,3 +39,6 @@ temp/
 
 # Machine-local Spring Boot overrides (e.g. JWT secret): never committed
 takeoff-backend/config/
+
+# Uploaded driver documents (personal data): never committed
+takeoff-backend/data/

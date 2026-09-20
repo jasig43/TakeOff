@@ -8,7 +8,11 @@ const LoginPage = lazy(() => import('../pages/LoginPage'))
 const RegisterPage = lazy(() => import('../pages/RegisterPage'))
 const OtpVerificationPage = lazy(() => import('../pages/OtpVerificationPage'))
 const DriverDashboardPage = lazy(() => import('../pages/DriverDashboardPage'))
+const DriverApplicationPage = lazy(() => import('../pages/DriverApplicationPage'))
+const DriverNotificationsPage = lazy(() => import('../pages/DriverNotificationsPage'))
 const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage'))
+const AdminApplicationsPage = lazy(() => import('../pages/AdminApplicationsPage'))
+const AdminApplicationDetailPage = lazy(() => import('../pages/AdminApplicationDetailPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 
 function RouteFallback() {
@@ -35,9 +39,13 @@ export function AppRouter() {
 
         <Route element={<ProtectedRoute role="APPLICANT_DRIVER" />}>
           <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
+          <Route path="/driver/application" element={<DriverApplicationPage />} />
+          <Route path="/driver/notifications" element={<DriverNotificationsPage />} />
         </Route>
         <Route element={<ProtectedRoute role="LOGISTICS_ADMIN" />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/applications" element={<AdminApplicationsPage />} />
+          <Route path="/admin/applications/:id" element={<AdminApplicationDetailPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

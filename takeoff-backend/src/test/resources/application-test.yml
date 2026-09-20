@@ -30,3 +30,6 @@ takeoff:
       email: admin@takeoff.test
       password: Test-Admin-Password#2026
       phone-number: "+15550100"
+  storage:
+    # Test uploads go under target/ so they are removed by 'clean' and never committed.
+    upload-dir: target/test-uploads

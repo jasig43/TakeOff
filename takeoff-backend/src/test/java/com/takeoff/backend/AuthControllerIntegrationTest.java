@@ -29,12 +29,9 @@ import org.springframework.amqp.AmqpConnectException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -56,9 +53,7 @@ import tools.jackson.databind.ObjectMapper;
  * Flyway migration). RabbitMQ is the only stand-in: the {@link RabbitTemplate} is mocked and the message it
  * would have sent is handed straight to the real {@link OtpConsumerListener}, exactly as the broker would.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@TakeoffIntegrationTest
 class AuthControllerIntegrationTest {
 
 	private static final String EXCHANGE = "takeoff.exchange";

@@ -23,6 +23,7 @@
   --success: #15803d;
   --success-soft: rgb(21 128 61 / 0.12);
   --warning: #b45309;
+  --warning-soft: rgb(217 119 6 / 0.14);
   --danger: #be123c;
   --danger-soft: rgb(190 18 60 / 0.1);
   --ring: #2456d6;
@@ -49,6 +50,7 @@
     --success: #4ade80;
     --success-soft: rgb(74 222 128 / 0.14);
     --warning: #fbbf24;
+    --warning-soft: rgb(251 191 36 / 0.16);
     --danger: #fb7185;
     --danger-soft: rgb(251 113 133 / 0.14);
     --ring: #93b8ff;
@@ -74,6 +76,7 @@
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --shadow-glass: var(--shadow-glass);

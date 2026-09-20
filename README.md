@@ -1,8 +1,8 @@
 # TakeOFF: Driver Onboarding Platform
 
-TakeOFF is a driver onboarding platform for courier and logistics companies. Applicants register, verify their phone with a one-time code, and sign in; logistics administrators sign in to a separate, role-protected portal.
+TakeOFF is a driver onboarding platform for courier and logistics companies. Applicants register, verify their phone with a one-time code, complete a step-by-step application (personal details, identity and licence, vehicle, documents) and submit it for review; logistics administrators sign in to a role-protected portal where they review submissions and approve or reject them. Drivers are notified of the decision.
 
-> **Status: MVP Phase 1.** Sign-in landing page, registration, OTP verification, JWT authentication and role-based access control. Later onboarding steps (personal details, licence, vehicle, documents, review) are planned; see [Planned next phases](#22-planned-next-phases).
+> **Status: MVP Phase 2.** Everything in Phase 1 (sign-in landing page, registration, OTP verification, JWT authentication, RBAC) plus the full onboarding workflow: driver application wizard, document uploads, submission tracking, the administrator review portal and driver notifications. See [Application workflow](#application-workflow) and [Planned next phases](#22-planned-next-phases).
 
 ## 1. Project overview
 
@@ -11,10 +11,24 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 | **Frontend** | React + Vite + TypeScript + Tailwind CSS (`takeoff-frontend/`) |
 | **Backend** | Java 17, Spring Boot 4, Maven (`takeoff-backend/`) |
 | **Data** | MySQL (Flyway-managed schema) |
-| **Messaging** | RabbitMQ (OTP generation workflow) |
-| **Local infra** | Docker Compose (MySQL + RabbitMQ) |
+| **Messaging** | RabbitMQ (OTP generation and application-decision events) |
+| **Files** | Uploaded documents stored on local disk, referenced from MySQL |
+| **Local infra** | Docker Compose (MySQL + RabbitMQ), or a locally installed MySQL and RabbitMQ |
 
-## 2. MVP Phase 1 features
+## 2. Features
+
+### Phase 2: onboarding workflow
+
+- **Role-aligned portals.** After sign-in a driver only ever sees the driver dashboard and driver pages (My application, Notifications); an administrator only sees the admin dashboard and review pages (Applications). The sidebar lists just the current role's destinations, the routes are guarded in the SPA, and the backend enforces the same split (`/drivers/**` vs `/admin/**`), so a driver calling an admin endpoint gets `403`.
+- **Driver profile and KYC:** date of birth (18+), address, emergency contact, national ID, driver's licence number, class and expiry (must not be expired).
+- **Vehicle registration:** type, registration (plate) number, make and model. National ID and plate are unique across drivers.
+- **Document management:** upload, replace, view and remove the driver's licence, vehicle registration and insurance certificate (PDF, JPG or PNG, up to 5 MB). The file's real type is checked from its bytes, not its name.
+- **Application submission and tracking:** a review step summarises everything, the driver confirms and submits, the API stores the application in MySQL as `PENDING_REVIEW`, and the completion screen shows the **Reference ID** and status. The dashboard tracks progress and status at any time.
+- **Administrator portal:** email/password sign-in (JWT, `LOGISTICS_ADMIN`), a dashboard with counts and the review queue, a filterable and searchable application list, and a detail page that shows every field and opens each uploaded document.
+- **Approve / reject:** `PENDING_REVIEW` to `APPROVED` or `REJECTED`, persisted through the admin API (`PATCH /admin/applications/{id}/status`). Rejection requires a note; the driver can then correct the application and resubmit.
+- **Driver notifications:** an in-app inbox with an unread badge in the sidebar. A notification is created when an application is submitted and when it is approved or rejected. Each decision is also published to RabbitMQ (`notification.queue`), whose consumer texts the driver the outcome through the configured SMS provider.
+
+### Phase 1: authentication
 
 - Clean landing page that is just the sign-in form (with a "Sign up" link), in glassmorphism styling that follows your system's light/dark setting (no toggle). One form serves drivers and administrators; after login each lands on their own dashboard, with a left sidebar for navigation (a slide-in drawer on phones).
 - Applicant registration with a strict password policy enforced on **both** client and server.
@@ -32,11 +46,13 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
  Browser (React SPA :5173)
       │  REST + Bearer JWT
       ▼
- Spring Boot API (:8080) ──► MySQL   (users, otp_tokens; Flyway)
-      │  ▲
+ Spring Boot API (:8080) ──► MySQL   (users, otp_tokens, driver_applications,
+      │  ▲   │                        application_documents, notifications; Flyway)
+      │  │   └──► ./data/uploads      (document files, never served directly)
       │  │ @RabbitListener
       ▼  │
-  RabbitMQ  takeoff.exchange ──(otp.routing.key)──► otp.queue
+  RabbitMQ  takeoff.exchange ──(otp.routing.key)──────────► otp.queue
+                             └─(notification.routing.key)─► notification.queue
 ```
 
 **Registration → verification flow**
@@ -48,6 +64,24 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 5. The SPA stores the session and routes to the dashboard for the user's role.
 
 If RabbitMQ is down at registration, the account is still created and the response says `otpDispatched: false`; the UI offers **Resend code** (`POST /api/v1/auth/resend-otp`). This is the documented recovery path.
+
+### Application workflow
+
+```
+DRAFT ──submit──► PENDING_REVIEW ──approve──► APPROVED
+  ▲                    │
+  │                    └──reject (note required)──► REJECTED ──driver edits──► DRAFT
+  └───────────────────────────────────────────────────────────────────────────┘
+```
+
+1. A driver's application is created automatically the first time they open **My application** (`GET /drivers/application`). Each step is saved on its own (`PUT .../personal`, `.../identity`, `.../vehicle`), so progress survives leaving the page.
+2. Documents are uploaded one at a time as `multipart/form-data` (`POST /drivers/application/documents/{type}`); replacing a document overwrites the old file.
+3. `POST /drivers/application/submit` is refused with `400 APPLICATION_INCOMPLETE` unless all three sections and all three documents are present. On success the application gets a Reference ID (`TKO-YYYYMMDD-XXXXXX`), status `PENDING_REVIEW`, a "submitted" notification, and is locked for editing (`409 APPLICATION_LOCKED` on any further change).
+4. An administrator opens it from the queue and approves or rejects it. Only `PENDING_REVIEW` applications can be decided (`409 INVALID_STATUS_TRANSITION` otherwise), and two admins acting at once cannot both win (optimistic locking, `409 CONCURRENT_MODIFICATION`).
+5. The decision, the driver's notification and the status change are written in **one database transaction**. After it commits, an `APPLICATION_DECIDED` event is published to RabbitMQ on a best-effort basis; a broker outage never undoes or blocks a decision.
+6. Editing a rejected application (saving any step or changing a document) reopens it as a `DRAFT`. Submitting a rejected application without changing anything is refused (`409 APPLICATION_UNCHANGED`). On resubmission the earlier decision is cleared and the same Reference ID is kept.
+
+Uploaded documents are private: they are stored under generated names (never the driver's file name), and the only way to read one is an authenticated request, either by the owning driver or by an administrator. The SPA fetches them with the bearer token and opens them as a blob, so a document URL cannot be shared or guessed.
 
 ## 4. Technology stack
 
@@ -73,7 +107,7 @@ See [`takeoff-backend/README.md`](takeoff-backend/README.md) and [`takeoff-front
 
 - **Java 17** (JDK). The Maven Wrapper downloads Maven itself.
 - **Node.js** (developed and verified on Node 24; Vite 8 requires a current LTS, 20.19+ or 22.12+) and npm.
-- **Docker Desktop** (or your own MySQL 8 + RabbitMQ 3.13/4.x).
+- **Docker Desktop** (or your own MySQL 8 + RabbitMQ 3.13/4.x, see [RabbitMQ setup](#9-rabbitmq-setup) for installing it natively on Windows).
 
 ## 7. Environment configuration
 
@@ -89,11 +123,28 @@ Spring Boot does not read `.env` files itself; export the variables in your shel
 
 ## 8. MySQL setup
 
-`docker compose up -d` creates database `takeoff` and user `takeoff`. The schema is created by Flyway on backend start (`V1__init_security_and_driver_schema.sql`); Hibernate only validates it (`ddl-auto: validate`). To use your own MySQL 8: create an empty `takeoff` database and user, then set `MYSQL_URL`, `MYSQL_USER`, `MYSQL_PASSWORD`.
+`docker compose up -d` creates database `takeoff` and user `takeoff`. The schema is created by Flyway on backend start (`V1__init_security_and_driver_schema.sql` for accounts and OTPs, `V2__driver_applications.sql` for applications, documents and notifications); Hibernate only validates it (`ddl-auto: validate`). To use your own MySQL 8: create an empty `takeoff` database and user, then set `MYSQL_URL`, `MYSQL_USER`, `MYSQL_PASSWORD`.
 
 ## 9. RabbitMQ setup
 
-The backend declares `takeoff.exchange` (direct), `otp.queue` (durable) and the `otp.routing.key` binding on first connect. Names are configurable via `OTP_EXCHANGE`, `OTP_QUEUE`, `OTP_ROUTING_KEY`. Management UI: http://localhost:15672 (dev credentials in `docker-compose.yml`).
+The backend declares `takeoff.exchange` (direct) and two durable queues with their bindings on first connect: `otp.queue` (`otp.routing.key`, OTP generation) and `notification.queue` (`notification.routing.key`, application decisions). Names are configurable via `OTP_EXCHANGE`, `OTP_QUEUE`, `OTP_ROUTING_KEY`, `NOTIFICATION_QUEUE`, `NOTIFICATION_ROUTING_KEY`. Management UI (Docker image only): http://localhost:15672 (dev credentials in `docker-compose.yml`).
+
+**Installing RabbitMQ natively on Windows (instead of Docker).** RabbitMQ needs Erlang/OTP first. Install [Erlang/OTP](https://www.erlang.org/downloads) and then the [RabbitMQ server installer](https://www.rabbitmq.com/docs/install-windows), both from an administrator prompt (they register a Windows service). Then make sure the service is running:
+
+```powershell
+# from an ADMINISTRATOR PowerShell
+Start-Service RabbitMQ
+Get-Service RabbitMQ                 # Status should be Running; AMQP listens on port 5672
+```
+
+A native install ships the built-in `guest` / `guest` account, which the broker only accepts from the same machine. The backend's default RabbitMQ user is `takeoff`, so point it at `guest` in your git-ignored `takeoff-backend/config/application.properties` (never in a committed file):
+
+```properties
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+```
+
+For anything other than your own laptop, create a dedicated user and set `RABBITMQ_USER` / `RABBITMQ_PASSWORD` instead.
 
 ## 10. Start local infrastructure
 
@@ -166,7 +217,23 @@ Base path `/api/v1`. All errors share one JSON shape:
 | `POST /auth/resend-otp` | public | Request a new code | 200 | 429 `OTP_RESEND_TOO_SOON`, 503 broker down |
 | `POST /auth/login` | public | Email + password, get JWT | 200 | 401 `INVALID_CREDENTIALS`, 403 `PHONE_NOT_VERIFIED` |
 | `GET /drivers/profile` | `ROLE_APPLICANT_DRIVER` | Own profile | 200 | 401, 403 |
+| `GET /drivers/application` | driver | Own application (created empty on first call) | 200 | 401, 403 |
+| `PUT /drivers/application/personal` | driver | Save personal details | 200 | 400 field errors, 409 `APPLICATION_LOCKED` |
+| `PUT /drivers/application/identity` | driver | Save national ID and licence | 200 | 400 field errors, 409 `NATIONAL_ID_IN_USE`, 409 `APPLICATION_LOCKED` |
+| `PUT /drivers/application/vehicle` | driver | Save vehicle | 200 | 400 field errors, 409 `PLATE_IN_USE`, 409 `APPLICATION_LOCKED` |
+| `POST /drivers/application/documents/{type}` | driver | Upload or replace a document (`multipart`, field `file`; type is `DRIVERS_LICENCE`, `VEHICLE_REGISTRATION` or `INSURANCE`) | 200 | 400 `FILE_REQUIRED`, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`, 409 locked |
+| `GET /drivers/application/documents/{type}` | driver | Download own document | 200 | 404 |
+| `DELETE /drivers/application/documents/{type}` | driver | Remove a document | 200 | 409 locked |
+| `POST /drivers/application/submit` | driver | Submit for review, get Reference ID | 200 | 400 `APPLICATION_INCOMPLETE`, 409 locked / unchanged |
+| `GET /drivers/notifications` | driver | Own notifications and unread count | 200 | 401, 403 |
+| `POST /drivers/notifications/{id}/read` | driver | Mark one read | 200 | 404 |
+| `POST /drivers/notifications/read-all` | driver | Mark all read | 200 | |
 | `GET /admin/health` | `ROLE_LOGISTICS_ADMIN` | RBAC demonstration | 200 | 401, 403 |
+| `GET /admin/summary` | admin | Counts by status | 200 | 401, 403 |
+| `GET /admin/applications?status=&q=&page=&size=` | admin | Submitted applications, filterable and searchable (drafts are never listed) | 200 | 400 `INVALID_STATUS_FILTER` |
+| `GET /admin/applications/{id}` | admin | Full application plus the driver's details | 200 | 404 |
+| `GET /admin/applications/{id}/documents/{type}` | admin | Open an uploaded document | 200 | 404 |
+| `PATCH /admin/applications/{id}/status` | admin | Approve or reject (`{ "status": "APPROVED" \| "REJECTED", "note": "..." }`; note required for reject) | 200 | 400, 409 `INVALID_STATUS_TRANSITION` / `CONCURRENT_MODIFICATION` |
 
 ## 14. Authentication and OTP flow
 
@@ -216,8 +283,8 @@ Enforced by `@CompliantPassword` on the backend (authoritative) and mirrored liv
 | Path | Requirement |
 |---|---|
 | `/api/v1/auth/**` | public |
-| `/api/v1/drivers/**` | `ROLE_APPLICANT_DRIVER` |
-| `/api/v1/admin/**` | `ROLE_LOGISTICS_ADMIN` |
+| `/api/v1/drivers/**` (profile, application, documents, notifications) | `ROLE_APPLICANT_DRIVER` |
+| `/api/v1/admin/**` (summary, applications, documents, decisions) | `ROLE_LOGISTICS_ADMIN` |
 | everything else | authenticated |
 
 Public registration always yields `APPLICANT_DRIVER`; a `role` field in the request body is ignored. Admins are created only through the config-driven seeder (`ADMIN_SEED_*`). Missing/invalid tokens get a JSON `401`, insufficient roles a JSON `403`. The React route guards (`ProtectedRoute`) are UX only.
@@ -262,6 +329,10 @@ cd takeoff-backend
 | `Unknown database 'takeoff'` (log says `No active profile set`) | You started without the `dev` profile, so the base config (`localhost:3306`) was used. Set the `dev` profile, and make sure the database exists: `docker compose up -d`, or create it yourself as shown under *Run the backend*. |
 | `Access denied` / connection refused to MySQL | Is `docker compose ps` healthy? Dev profile expects MySQL on **3307**. A locally installed MySQL owns 3306. |
 | Registration works but no code arrives | RabbitMQ unreachable: the API returns `otpDispatched:false`; fix RabbitMQ and press **Resend code**. In dev, read the code in the backend log. |
+| Backend log repeats `Connection refused` / `Failed to check/redeclare auto-delete queue(s)` | RabbitMQ is not running. Native install: `Start-Service RabbitMQ` from an administrator PowerShell, then `Get-Service RabbitMQ`. Docker: `docker compose up -d`. |
+| `ACCESS_REFUSED - Login was refused` for RabbitMQ | The backend is using the default `takeoff` user. Set `spring.rabbitmq.username` / `password` (native install: `guest` / `guest`) in `takeoff-backend/config/application.properties`, or the `RABBITMQ_*` variables. |
+| Uploads fail with `415` / `413` | Only real PDF, JPG or PNG files up to 5 MB are accepted (the content is checked, not the extension). Raise `MAX_UPLOAD_BYTES` and the multipart limits together if you need more. |
+| Uploaded files vanish after a clean | They live in `takeoff-backend/data/uploads` (`UPLOAD_DIR`), outside `target/`. Do not delete that folder without also clearing `application_documents`. |
 | Browser shows CORS errors | `FRONTEND_ORIGIN` must exactly match the SPA origin (scheme + host + port). |
 | `Unsupported class file major version` / wrong Java | Use JDK 17 (`java -version`). |
 | Port 5173/8080 already in use | Stop the other process; the Vite config uses a strict port so it never silently switches. |
@@ -286,8 +357,13 @@ cd takeoff-backend
 - No dead-letter queue: a message that fails processing is dropped and the user can resend.
 - No general rate limiting on login/registration beyond the OTP controls.
 - Sign-in is email and password only; there is no social (OAuth/SSO) login.
-- Not exercised in the build environment: real MySQL and RabbitMQ (no Docker available there). Backend tests run on H2 (MySQL mode) with the real Flyway migration and a mocked `RabbitTemplate`. See the backend README.
+- Uploaded documents live on the API server's local disk (`UPLOAD_DIR`). That is fine for one server; run more than one, or on ephemeral hosting, and you need shared storage (an S3-compatible store behind `DocumentStorageService`) and file backups. There is **no antivirus scan** of uploads; only the type, size and signature are checked.
+- Notifications are an in-app inbox (the sidebar badge refreshes every minute and on navigation, it is not pushed) plus an SMS of the decision, sent by the `notification.queue` consumer through the same provider as OTPs. With `SMS_PROVIDER=none` there is no SMS, and as with OTPs a failed SMS is only logged. There is no email channel.
+- An administrator's decision is final in this release: an approved or rejected application cannot be moved back to `PENDING_REVIEW` by an admin (a rejected driver can reopen it themselves).
+- Administrator accounts cannot be created or managed in the UI; use the config-driven seeder.
+- Document review is "open the file in a new tab"; there is no in-page viewer, annotation or per-document accept/reject.
+- Not exercised in the build environment: real MySQL and RabbitMQ from the test suite (backend tests run on H2 in MySQL mode with the real Flyway migrations and a mocked `RabbitTemplate`). The full workflow was, however, run against a real local MySQL 8; a locally installed RabbitMQ is documented above. See the backend README.
 
 ## 22. Planned next phases
 
-Personal details → identity and licence → vehicle details → document uploads → summary and submit (`POST /drivers/submit`, status `PENDING_REVIEW`) → admin review queue with approve/reject and RabbitMQ notifications. See `documentation/TakeOFF_Flow_State_Diagram.pdf`.
+Email notifications, delivery tracking and retries for SMS, an in-page document viewer, object storage for uploads, admin-user management, an audit trail of decisions, and a refresh-token flow for the JWT. See `documentation/TakeOFF_Flow_State_Diagram.pdf` for the original flow.

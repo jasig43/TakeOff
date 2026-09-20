@@ -1,0 +1,84 @@
+-- TakeOFF MVP Phase 2: driver applications (KYC, vehicle, documents), admin review, notifications.
+-- Target: MySQL 8.0+ (also runs on H2 in MySQL mode for the automated tests). All timestamps are UTC.
+
+CREATE TABLE driver_applications (
+    id                      BIGINT       NOT NULL AUTO_INCREMENT,
+    -- optimistic locking: stops two admins (or an admin and the driver) overwriting each other
+    version                 BIGINT       NOT NULL DEFAULT 0,
+    user_id                 BIGINT       NOT NULL,
+    -- assigned on first submission, e.g. TKO-20260920-K7Q2XM
+    reference_id            VARCHAR(30)  NULL,
+    status                  VARCHAR(20)  NOT NULL,
+
+    -- personal details
+    date_of_birth           DATE         NULL,
+    address_line            VARCHAR(200) NULL,
+    city                    VARCHAR(100) NULL,
+    emergency_contact_name  VARCHAR(100) NULL,
+    emergency_contact_phone VARCHAR(20)  NULL,
+
+    -- identity and licence
+    national_id             VARCHAR(20)  NULL,
+    licence_number          VARCHAR(30)  NULL,
+    licence_class           VARCHAR(20)  NULL,
+    licence_expiry          DATE         NULL,
+
+    -- vehicle
+    vehicle_type            VARCHAR(20)  NULL,
+    plate_number            VARCHAR(20)  NULL,
+    vehicle_make            VARCHAR(50)  NULL,
+    vehicle_model           VARCHAR(50)  NULL,
+
+    -- review
+    submitted_at            DATETIME(6)  NULL,
+    decided_at              DATETIME(6)  NULL,
+    decided_by              BIGINT       NULL,
+    decision_note           VARCHAR(500) NULL,
+
+    created_at              DATETIME(6)  NOT NULL,
+    updated_at              DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_driver_applications_user UNIQUE (user_id),
+    CONSTRAINT uk_driver_applications_reference UNIQUE (reference_id),
+    -- one person, one national ID; one vehicle, one applicant (NULLs are allowed many times)
+    CONSTRAINT uk_driver_applications_national_id UNIQUE (national_id),
+    CONSTRAINT uk_driver_applications_plate UNIQUE (plate_number),
+    CONSTRAINT fk_driver_applications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_driver_applications_decider FOREIGN KEY (decided_by) REFERENCES users (id) ON DELETE SET NULL,
+    CONSTRAINT chk_driver_applications_status CHECK (status IN ('DRAFT', 'PENDING_REVIEW', 'APPROVED', 'REJECTED'))
+);
+
+-- Admin queue: filter by status, newest first.
+CREATE INDEX idx_driver_applications_status ON driver_applications (status, submitted_at);
+
+CREATE TABLE application_documents (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    application_id    BIGINT       NOT NULL,
+    doc_type          VARCHAR(30)  NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    content_type      VARCHAR(100) NOT NULL,
+    size_bytes        BIGINT       NOT NULL,
+    -- random file name on disk; never derived from user input
+    storage_key       VARCHAR(80)  NOT NULL,
+    uploaded_at       DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id),
+    -- one document per type per application; re-uploading replaces it
+    CONSTRAINT uk_application_documents_type UNIQUE (application_id, doc_type),
+    CONSTRAINT fk_application_documents_application FOREIGN KEY (application_id)
+        REFERENCES driver_applications (id) ON DELETE CASCADE,
+    CONSTRAINT chk_application_documents_type CHECK (doc_type IN ('DRIVERS_LICENCE', 'VEHICLE_REGISTRATION', 'INSURANCE'))
+);
+
+CREATE TABLE notifications (
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    user_id    BIGINT       NOT NULL,
+    type       VARCHAR(40)  NOT NULL,
+    title      VARCHAR(150) NOT NULL,
+    message    VARCHAR(600) NOT NULL,
+    is_read    BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_notifications_user ON notifications (user_id, is_read, id);

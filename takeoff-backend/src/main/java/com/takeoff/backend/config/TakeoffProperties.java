@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>Records containing secrets override {@code toString()} so they can never leak through a log line.
  */
 @ConfigurationProperties(prefix = "takeoff")
-public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Admin admin, Sms sms) {
+public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Admin admin, Sms sms, Storage storage) {
 
 	public record Jwt(String secret, long expirationMinutes, String issuer) {
 
@@ -42,7 +42,12 @@ public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Ad
 		}
 	}
 
-	public record Rabbit(String exchange, String queue, String routingKey) {
+	/**
+	 * One exchange, two queues: {@code queue} carries OTP requests, {@code notificationQueue} carries
+	 * "application decided" events for the notification listener.
+	 */
+	public record Rabbit(String exchange, String queue, String routingKey, String notificationQueue,
+			String notificationRoutingKey) {
 	}
 
 	public record Admin(Seed seed) {
@@ -76,5 +81,9 @@ public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Ad
 		public String toString() {
 			return "Twilio[accountSid=" + accountSid + ", authToken=<redacted>]";
 		}
+	}
+
+	/** Where uploaded application documents are stored on disk, and the largest file accepted. */
+	public record Storage(String uploadDir, long maxFileBytes) {
 	}
 }

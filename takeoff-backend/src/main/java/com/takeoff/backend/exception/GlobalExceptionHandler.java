@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -35,8 +36,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		if (ex.getStatus().is5xxServerError()) {
 			log.warn("{} ({}): {}", ex.getCode(), ex.getStatus().value(), ex.getMessage(), ex.getCause());
 		}
+		if (ex instanceof FieldValidationException validation) {
+			return ResponseEntity.status(ex.getStatus())
+				.body(ApiErrorResponse.of(ex.getStatus(), ex.getCode(), "Some of the information you entered is not valid.",
+						path(request), validation.getViolations()));
+		}
 		return ResponseEntity.status(ex.getStatus())
 			.body(ApiErrorResponse.of(ex.getStatus(), ex.getCode(), ex.getMessage(), path(request)));
+	}
+
+	/** Two people changed the same application at once (e.g. two admins deciding it): the loser must reload. */
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	ResponseEntity<Object> handleOptimisticLock(ObjectOptimisticLockingFailureException ex, WebRequest request) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(ApiErrorResponse.of(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+					"This record was changed by someone else. Reload and try again.", path(request)));
 	}
 
 	/** Lost race on a unique constraint (two simultaneous registrations with the same email/phone). */
@@ -92,7 +106,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			case BAD_REQUEST -> "The request could not be understood. Check the request and try again.";
 			case NOT_FOUND -> "The requested resource was not found.";
 			case METHOD_NOT_ALLOWED -> "This HTTP method is not supported for this resource.";
-			case UNSUPPORTED_MEDIA_TYPE -> "Unsupported content type. Send the request as application/json.";
+			case UNSUPPORTED_MEDIA_TYPE -> "Unsupported content type.";
+			case CONTENT_TOO_LARGE -> "The upload is too large. The maximum file size is 5 MB.";
 			default -> status.is5xxServerError() ? "Something went wrong on our side. Please try again later."
 					: "The request could not be processed.";
 		};

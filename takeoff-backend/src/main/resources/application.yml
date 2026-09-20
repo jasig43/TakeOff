@@ -18,6 +18,12 @@ spring:
   application:
     name: takeoff-backend
 
+  servlet:
+    multipart:
+      # Slightly above the app's own limit (takeoff.storage.max-file-bytes) so users see the app's clear message.
+      max-file-size: 6MB
+      max-request-size: 7MB
+
   datasource:
     url: ${MYSQL_URL:jdbc:mysql://localhost:3306/takeoff?serverTimezone=UTC}
     username: ${MYSQL_USER:takeoff}
@@ -83,6 +89,9 @@ takeoff:
     exchange: ${OTP_EXCHANGE:takeoff.exchange}
     queue: ${OTP_QUEUE:otp.queue}
     routing-key: ${OTP_ROUTING_KEY:otp.routing.key}
+    # "Application decided" events (approve / reject) consumed by the notification listener.
+    notification-queue: ${NOTIFICATION_QUEUE:notification.queue}
+    notification-routing-key: ${NOTIFICATION_ROUTING_KEY:notification.routing.key}
 
   sms:
     # How verification codes reach the user's phone: "twilio" sends real SMS to any number;
@@ -95,6 +104,11 @@ takeoff:
       from-number: ${TWILIO_FROM_NUMBER:}
       messaging-service-sid: ${TWILIO_MESSAGING_SERVICE_SID:}
       api-base-url: https://api.twilio.com
+
+  storage:
+    # Where uploaded application documents are kept on disk (their metadata is in MySQL). Git-ignored by default.
+    upload-dir: ${UPLOAD_DIR:./data/uploads}
+    max-file-bytes: ${MAX_UPLOAD_BYTES:5242880}
 
   admin:
     seed:

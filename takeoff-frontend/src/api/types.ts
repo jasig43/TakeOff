@@ -87,3 +87,146 @@ export interface ApiErrorBody {
   path: string
   fieldErrors?: ApiFieldError[]
 }
+
+// ---------------------------------------------------------------- Driver application
+
+export type ApplicationStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
+export type DocumentType = 'DRIVERS_LICENCE' | 'VEHICLE_REGISTRATION' | 'INSURANCE'
+export type VehicleType = 'MOTORCYCLE' | 'CAR' | 'VAN' | 'PICKUP' | 'TRUCK'
+
+export interface PersonalDetails {
+  dateOfBirth: string | null
+  addressLine: string | null
+  city: string | null
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+}
+
+export interface IdentityDetails {
+  nationalId: string | null
+  licenceNumber: string | null
+  licenceClass: string | null
+  licenceExpiry: string | null
+}
+
+export interface VehicleDetails {
+  vehicleType: VehicleType | null
+  plateNumber: string | null
+  make: string | null
+  model: string | null
+}
+
+export interface DocumentInfo {
+  type: DocumentType
+  filename: string
+  contentType: string
+  sizeBytes: number
+  uploadedAt: string
+}
+
+export interface ApplicationProgress {
+  personal: boolean
+  identity: boolean
+  vehicle: boolean
+  documents: boolean
+  readyToSubmit: boolean
+}
+
+export interface Application {
+  id: number
+  referenceId: string | null
+  status: ApplicationStatus
+  editable: boolean
+  personal: PersonalDetails
+  identity: IdentityDetails
+  vehicle: VehicleDetails
+  documents: DocumentInfo[]
+  progress: ApplicationProgress
+  submittedAt: string | null
+  decidedAt: string | null
+  decisionNote: string | null
+}
+
+export interface PersonalRequest {
+  dateOfBirth: string
+  addressLine: string
+  city: string
+  emergencyContactName: string
+  emergencyContactPhone: string
+}
+
+export interface IdentityRequest {
+  nationalId: string
+  licenceNumber: string
+  licenceClass: string
+  licenceExpiry: string
+}
+
+export interface VehicleRequest {
+  vehicleType: VehicleType
+  plateNumber: string
+  make: string
+  model: string
+}
+
+export interface NotificationItem {
+  id: number
+  type: string
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+}
+
+export interface NotificationInbox {
+  items: NotificationItem[]
+  unreadCount: number
+}
+
+// ---------------------------------------------------------------- Admin review
+
+export interface ApplicationSummaryRow {
+  id: number
+  referenceId: string | null
+  status: ApplicationStatus
+  driverName: string
+  driverEmail: string
+  driverPhone: string
+  plateNumber: string | null
+  submittedAt: string | null
+  decidedAt: string | null
+}
+
+export interface PageOf<T> {
+  items: T[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
+export interface DriverInfo {
+  id: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  phoneVerified: boolean
+  registeredAt: string | null
+}
+
+export interface ApplicationDetail {
+  application: Application
+  driver: DriverInfo
+}
+
+export interface AdminSummary {
+  pendingReview: number
+  approved: number
+  rejected: number
+  totalSubmitted: number
+}
+
+export interface DecisionRequest {
+  status: 'APPROVED' | 'REJECTED'
+  note?: string
+}

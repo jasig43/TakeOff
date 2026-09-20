@@ -1,10 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { notificationApi } from '../../api/applicationApi'
 import type { Role } from '../../api/types'
 import { AuthProvider } from '../../context/AuthContext'
 import { Sidebar } from './Sidebar'
+
+vi.mock('../../api/applicationApi', () => ({
+  notificationApi: { inbox: vi.fn(), markRead: vi.fn(), markAllRead: vi.fn() },
+}))
 
 const SESSION_KEY = 'takeoff.auth'
 
@@ -41,7 +46,35 @@ function renderSidebar(path: string) {
 }
 
 describe('Sidebar', () => {
-  afterEach(() => window.localStorage.clear())
+  beforeEach(() => {
+    vi.mocked(notificationApi.inbox).mockResolvedValue({ items: [], unreadCount: 3 })
+  })
+  afterEach(() => {
+    window.localStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it('offers a driver only driver destinations, with the unread count on Notifications', async () => {
+    seedSession('APPLICANT_DRIVER')
+    renderSidebar('/driver/dashboard')
+
+    expect(screen.getByRole('link', { name: 'My application' })).toHaveAttribute('href', '/driver/application')
+    expect(await screen.findByRole('link', { name: /notifications \(3 unread\)/i })).toHaveAttribute(
+      'href',
+      '/driver/notifications',
+    )
+    expect(screen.queryByRole('link', { name: 'Applications' })).not.toBeInTheDocument()
+  })
+
+  it('offers an administrator only admin destinations and never asks for driver notifications', () => {
+    seedSession('LOGISTICS_ADMIN', 'TakeOFF Administrator')
+    renderSidebar('/admin/dashboard')
+
+    expect(screen.getByRole('link', { name: 'Applications' })).toHaveAttribute('href', '/admin/applications')
+    expect(screen.queryByRole('link', { name: 'My application' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /notifications/i })).not.toBeInTheDocument()
+    expect(notificationApi.inbox).not.toHaveBeenCalled()
+  })
 
   it('shows the brand, the current page, the signed-in user and their role', () => {
     seedSession('APPLICANT_DRIVER')
@@ -120,10 +153,8 @@ describe('Sidebar', () => {
       await user.click(screen.getByRole('button', { name: /open navigation menu/i }))
       const dialog = await screen.findByRole('dialog')
 
-      // close button -> Dashboard link -> Sign out, then Tab wraps back to the close button
-      await user.tab()
-      await user.tab()
-      await user.tab()
+      // close button -> Dashboard -> My application -> Notifications -> Sign out, then Tab wraps to the close button
+      for (let i = 0; i < 5; i++) await user.tab()
       expect(dialog).toContainElement(document.activeElement as HTMLElement)
       expect(screen.getByRole('button', { name: /close navigation menu/i })).toHaveFocus()
     })

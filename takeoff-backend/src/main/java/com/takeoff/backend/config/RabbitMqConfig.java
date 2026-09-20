@@ -9,7 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * RabbitMQ topology for the OTP workflow: {@code takeoff.exchange} --(otp.routing.key)--> {@code otp.queue}.
+ * RabbitMQ topology, all on {@code takeoff.exchange}:
+ * <ul>
+ *   <li>{@code otp.routing.key} -> {@code otp.queue}: OTP generation requests</li>
+ *   <li>{@code notification.routing.key} -> {@code notification.queue}: "application decided" events</li>
+ * </ul>
  * Names are configurable ({@code takeoff.rabbitmq.*}). Spring's RabbitAdmin declares these on first connect.
  */
 @Configuration
@@ -28,5 +32,17 @@ public class RabbitMqConfig {
 	@Bean
 	Binding otpBinding(Queue otpQueue, DirectExchange takeoffExchange, TakeoffProperties properties) {
 		return BindingBuilder.bind(otpQueue).to(takeoffExchange).with(properties.rabbitmq().routingKey());
+	}
+
+	@Bean
+	Queue notificationQueue(TakeoffProperties properties) {
+		return QueueBuilder.durable(properties.rabbitmq().notificationQueue()).build();
+	}
+
+	@Bean
+	Binding notificationBinding(Queue notificationQueue, DirectExchange takeoffExchange, TakeoffProperties properties) {
+		return BindingBuilder.bind(notificationQueue)
+			.to(takeoffExchange)
+			.with(properties.rabbitmq().notificationRoutingKey());
 	}
 }
