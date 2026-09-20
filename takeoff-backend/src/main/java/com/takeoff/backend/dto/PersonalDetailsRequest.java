@@ -30,5 +30,7 @@ public record PersonalDetailsRequest(
 		@NotBlank(message = "Emergency contact phone is required.")
 		@Pattern(regexp = "^\\+[1-9]\\d{6,14}$",
 				message = "Phone number must be in international format, for example +263771234567.")
+		@Pattern(regexp = "^(?!\\+2630).*$",
+				message = "Zimbabwe numbers are written without the leading 0 after +263, for example +263771234567.")
 		String emergencyContactPhone) {
 }

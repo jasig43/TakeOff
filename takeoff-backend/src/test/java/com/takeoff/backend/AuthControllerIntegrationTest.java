@@ -205,6 +205,17 @@ class AuthControllerIntegrationTest {
 	}
 
 	@Test
+	void aZimbabweanNumberWithTheLocalLeadingZeroIsRejectedBecauseNoSmsCanReachIt() throws Exception {
+		register("zero@example.com", "+2630778657160", PASSWORD).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors[?(@.field == 'phoneNumber')].message",
+					hasItem(containsString("without the leading 0 after +263"))));
+
+		// the same number written correctly is fine, and other countries are untouched
+		register("zero-ok@example.com", "+263778657160", PASSWORD).andExpect(status().isCreated());
+		register("italy@example.com", "+390612345678", PASSWORD).andExpect(status().isCreated());
+	}
+
+	@Test
 	void aDuplicateEmailIsRejectedWith409() throws Exception {
 		register("dup@example.com", "+15550115", PASSWORD).andExpect(status().isCreated());
 

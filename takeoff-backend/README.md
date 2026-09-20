@@ -77,7 +77,7 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 ## Tests
 
 ```bash
-./mvnw test              # 173 tests, no external services required
+./mvnw test              # 174 tests, no external services required
 ./mvnw clean package
 ```
 

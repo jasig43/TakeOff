@@ -241,6 +241,7 @@ Base path `/api/v1`. All errors share one JSON shape:
 - The auth filter also confirms the user still exists, is enabled, and matches the token subject, so disabling an account takes effect immediately.
 - OTPs: 6 digits, valid `OTP_EXPIRATION_SECONDS` (default 300), max `OTP_MAX_ATTEMPTS` wrong guesses (default 5), only the newest code works, resend cooldown 30 s. Outside dev/test they are stored as HMAC-SHA256 hashes (`OTP_PEPPER`).
 - Applicants cannot log in until their phone is verified.
+- Phone numbers must be E.164 (`+` and the country code). A Zimbabwean number typed with its local leading 0 (`+2630778...`) has the right shape but no SMS can reach it, so sign-up refuses it with the fix (`+263778...`), on both the client and the server.
 - At most `OTP_MAX_SENDS_PER_HOUR` codes (default 5) are issued per phone number per hour (`429 OTP_SEND_LIMIT`), because real SMS costs money and can be abused.
 
 ### SMS delivery

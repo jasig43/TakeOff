@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { usePasswordValidation } from '../hooks/usePasswordValidation'
 import { useToast } from '../hooks/useToast'
-import { isValidEmail, isValidFullName, isValidPhone, normalizePhone } from '../utils/formValidation'
+import { isValidEmail, isValidFullName, normalizePhone, phoneProblem } from '../utils/formValidation'
 import { savePendingVerification } from '../utils/tokenStorage'
 
 type FieldName = 'fullName' | 'email' | 'phoneNumber' | 'password' | 'confirmPassword' | 'termsAccepted'
@@ -53,7 +53,7 @@ export default function RegisterPage() {
   const clientErrors: FieldErrors = {
     fullName: isValidFullName(fullName) ? undefined : 'Enter your full name (2 to 100 characters).',
     email: isValidEmail(email) ? undefined : 'Enter a valid email address, for example name@example.com.',
-    phoneNumber: isValidPhone(phone) ? undefined : 'Enter your phone number in international format, for example +15550199.',
+    phoneNumber: phoneProblem(phone),
     password: passwordEval.isValid ? undefined : 'Your password does not meet all the requirements yet.',
     confirmPassword:
       confirmPassword.length > 0 && confirmPassword === password ? undefined : 'The two passwords must match.',

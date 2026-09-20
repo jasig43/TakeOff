@@ -3,7 +3,7 @@
  * feedback; the backend remains authoritative and its per-field messages are shown if it disagrees.
  * Each function returns an error message, or `undefined` when the value is fine.
  */
-import { isValidPhone } from './formValidation'
+import { phoneProblem } from './formValidation'
 
 export const MINIMUM_AGE = 18
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -58,7 +58,7 @@ export function validateDateOfBirth(value: string, now: Date = new Date()): stri
 
 export function validateEmergencyPhone(value: string): string | undefined {
   if (!value.trim()) return 'Emergency contact phone is required.'
-  return isValidPhone(value) ? undefined : 'Use international format with the country code, for example +263771234567.'
+  return phoneProblem(value)
 }
 
 export function validateNationalId(value: string): string | undefined {
