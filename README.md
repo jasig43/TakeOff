@@ -2,7 +2,7 @@
 
 TakeOFF is a driver onboarding platform for courier and logistics companies. Applicants register, verify their phone with a one-time code, and sign in; logistics administrators sign in to a separate, role-protected portal.
 
-> **Status: MVP Phase 1.** Landing page, registration, OTP verification, JWT authentication and role-based access control. Later onboarding steps (personal details, licence, vehicle, documents, review) are planned; see [Planned next phases](#22-planned-next-phases).
+> **Status: MVP Phase 1.** Sign-in landing page, registration, OTP verification, JWT authentication and role-based access control. Later onboarding steps (personal details, licence, vehicle, documents, review) are planned; see [Planned next phases](#22-planned-next-phases).
 
 ## 1. Project overview
 
@@ -16,7 +16,7 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 
 ## 2. MVP Phase 1 features
 
-- Animated, responsive landing page with dark and light glassmorphism themes.
+- Clean landing page that is just the sign-in form (with a "Sign up" link), in dark and light glassmorphism themes. One form serves drivers and administrators; after login each lands on their own dashboard.
 - Applicant registration with a strict password policy enforced on **both** client and server.
 - OTP workflow over RabbitMQ: register, event published, listener issues a 6-digit code, verify.
 - Six-digit OTP input (auto-advance, paste, countdown ring, resend) with confetti on success.
@@ -208,7 +208,7 @@ Public registration always yields `APPLICANT_DRIVER`; a `role` field in the requ
 3. On the OTP screen enter **`123456`**.
 4. For any other phone number, the generated code is printed in the backend console: `[DEV ONLY] Verification code for user …`.
 
-**Dev admin (seeded only under the `dev` profile):** `admin@takeoff.local` / `Dev-Admin-Password#2026`, signed in at http://localhost:5173/admin/login. This is a throw-away local credential; production admins must be seeded from your own secrets.
+**Dev admin (seeded only under the `dev` profile):** `admin@takeoff.local` / `Dev-Admin-Password#2026`, signed in with the same form at http://localhost:5173 (it opens the admin dashboard). This is a throw-away local credential; production admins must be seeded from your own secrets.
 
 ## 18. Build and test commands
 

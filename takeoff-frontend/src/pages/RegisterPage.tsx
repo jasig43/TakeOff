@@ -278,7 +278,7 @@ export default function RegisterPage() {
             <DevOtpHint />
             <p className="text-center text-sm text-muted">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-brand underline-offset-4 hover:underline">
+              <Link to="/" className="font-semibold text-brand underline-offset-4 hover:underline">
                 Sign in
               </Link>
             </p>

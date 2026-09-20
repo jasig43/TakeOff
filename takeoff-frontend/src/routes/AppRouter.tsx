@@ -1,14 +1,12 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { Skeleton } from '../components/ui/Skeleton'
 import { ProtectedRoute } from './ProtectedRoute'
 
-// Route-level code splitting keeps the landing page bundle small.
-const LandingPage = lazy(() => import('../pages/LandingPage'))
+// Route-level code splitting keeps the first load small.
+const LoginPage = lazy(() => import('../pages/LoginPage'))
 const RegisterPage = lazy(() => import('../pages/RegisterPage'))
 const OtpVerificationPage = lazy(() => import('../pages/OtpVerificationPage'))
-const LoginPage = lazy(() => import('../pages/LoginPage'))
-const AdminLoginPage = lazy(() => import('../pages/AdminLoginPage'))
 const DriverDashboardPage = lazy(() => import('../pages/DriverDashboardPage'))
 const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
@@ -27,11 +25,13 @@ export function AppRouter() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        {/* One sign-in form for everyone at "/". The old login URLs still work and lead here. */}
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/" replace />} />
+
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-otp" element={<OtpVerificationPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
 
         <Route element={<ProtectedRoute role="APPLICANT_DRIVER" />}>
           <Route path="/driver/dashboard" element={<DriverDashboardPage />} />

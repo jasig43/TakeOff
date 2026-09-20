@@ -24,8 +24,7 @@ function renderAt(path: string) {
     <AuthProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/login" element={<p>driver login</p>} />
-          <Route path="/admin/login" element={<p>admin login</p>} />
+          <Route path="/" element={<p>sign in page</p>} />
           <Route element={<ProtectedRoute role="APPLICANT_DRIVER" />}>
             <Route path="/driver/dashboard" element={<p>driver dashboard</p>} />
           </Route>
@@ -41,16 +40,16 @@ function renderAt(path: string) {
 describe('ProtectedRoute', () => {
   afterEach(() => window.localStorage.clear())
 
-  it('redirects unauthenticated visitors of driver routes to the driver login', () => {
+  it('sends signed-out visitors of driver routes to the sign-in page', () => {
     seedSession(null)
     renderAt('/driver/dashboard')
-    expect(screen.getByText('driver login')).toBeInTheDocument()
+    expect(screen.getByText('sign in page')).toBeInTheDocument()
   })
 
-  it('redirects unauthenticated visitors of admin routes to the admin login', () => {
+  it('sends signed-out visitors of admin routes to the sign-in page', () => {
     seedSession(null)
     renderAt('/admin/dashboard')
-    expect(screen.getByText('admin login')).toBeInTheDocument()
+    expect(screen.getByText('sign in page')).toBeInTheDocument()
   })
 
   it('lets an applicant into the driver dashboard', () => {
@@ -83,7 +82,7 @@ describe('ProtectedRoute', () => {
       }),
     )
     renderAt('/driver/dashboard')
-    expect(screen.getByText('driver login')).toBeInTheDocument()
+    expect(screen.getByText('sign in page')).toBeInTheDocument()
     expect(window.localStorage.getItem(SESSION_KEY)).toBeNull()
   })
 })

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { MeshBackground } from './MeshBackground'
 import { Navbar } from './Navbar'
 
@@ -28,18 +27,8 @@ export function PageShell({ children, centered = false }: PageShellProps) {
       >
         {children}
       </main>
-      <footer className="mx-auto w-full max-w-6xl px-4 pb-8 text-sm text-muted sm:px-6">
-        <div className="flex flex-col items-center justify-between gap-2 border-t border-line pt-6 sm:flex-row">
-          <p>© {new Date().getFullYear()} TakeOFF. MVP Phase 1 preview.</p>
-          <p className="flex gap-4">
-            <Link to="/login" className="underline-offset-4 hover:underline">
-              Driver sign in
-            </Link>
-            <Link to="/admin/login" className="underline-offset-4 hover:underline">
-              Admin portal
-            </Link>
-          </p>
-        </div>
+      <footer className="mx-auto w-full max-w-6xl px-4 pb-8 text-center text-sm text-muted sm:px-6">
+        <p>© {new Date().getFullYear()} TakeOFF</p>
       </footer>
     </div>
   )

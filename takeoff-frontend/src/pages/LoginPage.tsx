@@ -4,8 +4,9 @@ import { PageShell } from '../components/layout/PageShell'
 import { useAuth } from '../hooks/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
 
+/** The landing page: just the sign-in form. Signed-in users go straight to their dashboard. */
 export default function LoginPage() {
-  usePageTitle('Driver sign in')
+  usePageTitle('Sign in')
   const { user } = useAuth()
 
   if (user) {
@@ -13,7 +14,7 @@ export default function LoginPage() {
   }
   return (
     <PageShell centered>
-      <LoginForm expectedRole="APPLICANT_DRIVER" />
+      <LoginForm />
     </PageShell>
   )
 }

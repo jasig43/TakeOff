@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogIn, ShieldCheck } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { authApi } from '../../api/authApi'
 import { isApiError } from '../../api/client'
 import type { Role } from '../../api/types'
@@ -14,33 +14,16 @@ import { GlassCard } from '../ui/GlassCard'
 import { PasswordField } from '../ui/PasswordField'
 import { TextField } from '../ui/TextField'
 
-interface LoginFormProps {
-  /** Which portal this form belongs to; the returned account's role must match. */
-  expectedRole: Role
-}
-
-const COPY: Record<Role, { title: string; subtitle: string; wrongRole: string; alt: { to: string; text: string; label: string } }> = {
-  APPLICANT_DRIVER: {
-    title: 'Driver sign in',
-    subtitle: 'Continue your onboarding application.',
-    wrongRole: 'That is an administrator account. Please use the Admin Portal to sign in.',
-    alt: { to: '/register', text: 'New to TakeOFF?', label: 'Become a driver' },
-  },
-  LOGISTICS_ADMIN: {
-    title: 'Admin portal',
-    subtitle: 'Sign in with your logistics administrator account.',
-    wrongRole: 'This account does not have administrator access. Drivers can sign in from the driver login.',
-    alt: { to: '/login', text: 'Are you a driver?', label: 'Driver sign in' },
-  },
-}
-
 const dashboardFor = (role: Role) => (role === 'LOGISTICS_ADMIN' ? '/admin/dashboard' : '/driver/dashboard')
 
-export function LoginForm({ expectedRole }: LoginFormProps) {
+/**
+ * The single sign-in form for everyone. The server decides the role; after a successful login the user
+ * is sent to the dashboard for that role (drivers and administrators use the same form).
+ */
+export function LoginForm() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const toast = useToast()
-  const copy = COPY[expectedRole]
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -63,11 +46,6 @@ export function LoginForm({ expectedRole }: LoginFormProps) {
     const normalizedEmail = email.trim().toLowerCase()
     try {
       const response = await authApi.login({ email: normalizedEmail, password })
-      if (response.user.role !== expectedRole) {
-        // Do not persist a session for the wrong portal.
-        setError(copy.wrongRole)
-        return
-      }
       login(response)
       navigate(dashboardFor(response.user.role), { replace: true })
     } catch (err) {
@@ -99,15 +77,11 @@ export function LoginForm({ expectedRole }: LoginFormProps) {
       <GlassCard className="p-6 sm:p-10">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-brand-fg">
-            {expectedRole === 'LOGISTICS_ADMIN' ? (
-              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-            ) : (
-              <LogIn className="h-6 w-6" aria-hidden="true" />
-            )}
+            <LogIn className="h-6 w-6" aria-hidden="true" />
           </span>
           <div>
-            <h1 className="font-display text-2xl font-bold">{copy.title}</h1>
-            <p className="text-sm text-muted">{copy.subtitle}</p>
+            <h1 className="font-display text-2xl font-bold">Sign in</h1>
+            <p className="text-sm text-muted">Welcome back to TakeOFF.</p>
           </div>
         </div>
 
@@ -149,9 +123,9 @@ export function LoginForm({ expectedRole }: LoginFormProps) {
         </form>
 
         <p className="mt-8 text-center text-sm text-muted">
-          {copy.alt.text}{' '}
-          <Link to={copy.alt.to} className="font-semibold text-brand underline-offset-4 hover:underline">
-            {copy.alt.label}
+          Don&rsquo;t have an account?{' '}
+          <Link to="/register" className="font-semibold text-brand underline-offset-4 hover:underline">
+            Sign up
           </Link>
         </p>
       </GlassCard>

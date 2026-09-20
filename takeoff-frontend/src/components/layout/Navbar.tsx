@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { ButtonLink, Button } from '../ui/Button'
 
+/** Minimal top bar: brand, theme toggle, and (only when signed in) Dashboard / Sign out. */
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
@@ -11,9 +12,8 @@ export function Navbar() {
   const dashboardPath = user?.role === 'LOGISTICS_ADMIN' ? '/admin/dashboard' : '/driver/dashboard'
 
   const handleLogout = () => {
-    const loginPath = user?.role === 'LOGISTICS_ADMIN' ? '/admin/login' : '/login'
     logout()
-    navigate(loginPath, { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (
@@ -31,14 +31,10 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/*
-          Secondary links are hidden on small screens by wrapping them, not by adding `hidden` to the
-          button itself: the button already sets its own `display`, and the two utilities would collide.
-          The hero and footer carry the same calls to action on phones.
-        */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <>
+              {/* Wrapped, not given `hidden` directly: the button sets its own display and the two would collide. */}
               <div className="hidden sm:block">
                 <ButtonLink to={dashboardPath} variant="ghost">
                   <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
@@ -49,20 +45,6 @@ export function Navbar() {
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 Sign out
               </Button>
-            </>
-          ) : (
-            <>
-              <div className="hidden md:block">
-                <ButtonLink to="/admin/login" variant="ghost">
-                  Admin Portal
-                </ButtonLink>
-              </div>
-              <ButtonLink to="/login" variant="ghost">
-                Sign in
-              </ButtonLink>
-              <div className="hidden sm:block">
-                <ButtonLink to="/register">Become a Driver</ButtonLink>
-              </div>
             </>
           )}
           <ThemeToggle />
