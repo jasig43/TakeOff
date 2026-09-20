@@ -1,0 +1,92 @@
+# TakeOFF backend configuration.
+#
+# Everything environment-specific is read from environment variables (see .env.example).
+# No secrets are committed: the base profile has NO default for the database password,
+# RabbitMQ password, JWT secret or OTP pepper. The `dev` profile adds clearly-labelled
+# local-only defaults; `prod` adds strict settings. Select a profile with
+# SPRING_PROFILES_ACTIVE=dev|prod. Running with no profile is intentionally NOT a dev
+# environment: the app refuses to start without a JWT secret.
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+spring:
+  application:
+    name: takeoff-backend
+
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/takeoff?serverTimezone=UTC}
+    username: ${MYSQL_USER:takeoff}
+    password: ${MYSQL_PASSWORD:}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema; Hibernate only verifies that entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        type:
+          # Store java.time.Instant as a plain UTC TIMESTAMP/DATETIME column (portable across MySQL and H2).
+          preferred_instant_jdbc_type: TIMESTAMP
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:takeoff}
+    password: ${RABBITMQ_PASSWORD:}
+    # Fail fast (instead of the 60s default) when the broker is unreachable, so registration can degrade gracefully.
+    connection-timeout: 5s
+    listener:
+      simple:
+        # A message that makes the listener throw is dropped instead of being redelivered forever.
+        default-requeue-rejected: false
+
+takeoff:
+  jwt:
+    # Required. At least 32 characters of random data. Generate with: openssl rand -base64 48
+    secret: ${JWT_SECRET:}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+    issuer: takeoff-backend
+
+  cors:
+    # Comma-separated list of allowed browser origins (the frontend URL).
+    allowed-origins: ${FRONTEND_ORIGIN:http://localhost:5173}
+
+  otp:
+    expiration-seconds: ${OTP_EXPIRATION_SECONDS:300}
+    resend-cooldown-seconds: ${OTP_RESEND_COOLDOWN_SECONDS:30}
+    max-attempts: ${OTP_MAX_ATTEMPTS:5}
+    # Store OTPs as HMAC-SHA256 hashes (requires OTP_PEPPER). Disabled only in the dev/test profiles.
+    hash-codes: true
+    pepper: ${OTP_PEPPER:}
+    # Development conveniences. Both are refused at startup outside the dev/test profiles.
+    log-to-console: false
+    test-bypass:
+      enabled: false
+      phone-number: "+15550199"
+      code: "123456"
+
+  rabbitmq:
+    exchange: ${OTP_EXCHANGE:takeoff.exchange}
+    queue: ${OTP_QUEUE:otp.queue}
+    routing-key: ${OTP_ROUTING_KEY:otp.routing.key}
+
+  admin:
+    seed:
+      # Admins are never created through public registration. Enable this only to bootstrap the first admin.
+      enabled: ${ADMIN_SEED_ENABLED:false}
+      email: ${ADMIN_SEED_EMAIL:}
+      password: ${ADMIN_SEED_PASSWORD:}
+      phone-number: ${ADMIN_SEED_PHONE:}
+      full-name: ${ADMIN_SEED_NAME:TakeOFF Administrator}

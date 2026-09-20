@@ -1,0 +1,38 @@
+# LOCAL DEVELOPMENT ONLY (SPRING_PROFILES_ACTIVE=dev).
+#
+# Every value below is a throw-away placeholder that matches the defaults in the root
+# docker-compose.yml. None of them is a real secret, and none of them may be used in production.
+# Environment variables still override each value.
+
+spring:
+  datasource:
+    # Matches docker-compose.yml: MySQL is published on host port 3307.
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3307/takeoff?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
+    password: ${MYSQL_PASSWORD:takeoff_dev_password}
+  rabbitmq:
+    password: ${RABBITMQ_PASSWORD:takeoff_dev_password}
+
+takeoff:
+  jwt:
+    # The "dev-only-" prefix is recognised: JwtService refuses this value outside the dev/test profiles.
+    secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789abcdef}
+
+  otp:
+    hash-codes: false
+    pepper: ${OTP_PEPPER:dev-only-pepper}
+    # The OTP is printed to the backend console (dev/test only) because no SMS gateway is wired in Phase 1.
+    log-to-console: true
+    # Evaluator shortcut: this phone number always receives this code. Dev/test only.
+    test-bypass:
+      enabled: true
+
+  admin:
+    seed:
+      enabled: ${ADMIN_SEED_ENABLED:true}
+      email: ${ADMIN_SEED_EMAIL:admin@takeoff.local}
+      password: ${ADMIN_SEED_PASSWORD:Dev-Admin-Password#2026}
+      phone-number: ${ADMIN_SEED_PHONE:+15550100}
+
+logging:
+  level:
+    com.takeoff: DEBUG

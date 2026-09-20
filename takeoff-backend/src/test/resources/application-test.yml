@@ -1,0 +1,32 @@
+# Test profile: in-memory H2 (MySQL compatibility mode) so tests need neither MySQL nor RabbitMQ.
+# Flyway still runs the real V1 migration against it.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:takeoff-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  rabbitmq:
+    listener:
+      simple:
+        # No broker in tests: the @RabbitListener container must not try to connect.
+        auto-startup: false
+
+takeoff:
+  jwt:
+    secret: test-only-jwt-secret-0123456789-0123456789
+    expiration-minutes: 15
+  otp:
+    hash-codes: false
+    pepper: test-pepper
+    log-to-console: true
+    resend-cooldown-seconds: 0
+    test-bypass:
+      enabled: true
+  admin:
+    seed:
+      enabled: true
+      email: admin@takeoff.test
+      password: Test-Admin-Password#2026
+      phone-number: "+15550100"

@@ -1,0 +1,64 @@
+# Local development infrastructure for TakeOFF: MySQL + RabbitMQ (with management UI).
+#
+#   docker compose up -d        start both and wait for them to become healthy
+#   docker compose ps           check health
+#   docker compose down         stop (data is kept in the named volumes)
+#   docker compose down -v      stop AND delete all data
+#
+# The passwords below are DEVELOPMENT-ONLY defaults that match application-dev.yml.
+# Override any of them with environment variables or a root `.env` file (see .env.example).
+# Ports are published on 127.0.0.1 only, so these dev credentials are not reachable from the network.
+#
+# Host ports:  MySQL 3307 -> container 3306   (3307, not 3306, to avoid clashing with a locally installed MySQL)
+#              RabbitMQ AMQP 5672, management UI http://localhost:15672
+
+name: takeoff
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: takeoff-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-takeoff}
+      MYSQL_USER: ${MYSQL_USER:-takeoff}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-takeoff_dev_password}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - takeoff_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: takeoff-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-takeoff}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-takeoff_dev_password}
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - takeoff_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  takeoff_mysql_data:
+  takeoff_rabbitmq_data:
