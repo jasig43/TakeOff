@@ -5,7 +5,6 @@ import { UserPlus } from 'lucide-react'
 import { authApi } from '../api/authApi'
 import { isApiError } from '../api/client'
 import { DevOtpHint } from '../components/auth/DevOtpHint'
-import { OAuthButtons } from '../components/auth/OAuthButtons'
 import { PasswordChecklist } from '../components/auth/PasswordChecklist'
 import { PasswordStrengthMeter } from '../components/auth/PasswordStrengthMeter'
 import { PageShell } from '../components/layout/PageShell'
@@ -276,7 +275,6 @@ export default function RegisterPage() {
           </form>
 
           <div className="mt-8 space-y-6">
-            <OAuthButtons />
             <DevOtpHint />
             <p className="text-center text-sm text-muted">
               Already have an account?{' '}

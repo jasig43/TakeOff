@@ -50,7 +50,6 @@ src/
 - **Accessibility.** Labelled inputs with errors linked by `aria-describedby`, visible focus, skip link, state never conveyed by colour alone (icons + text), polite live regions for password strength and toasts, OTP usable by keyboard and paste.
 - **Motion.** `MotionConfig reducedMotion="user"` plus a CSS `prefers-reduced-motion` reset; the count-up hook returns final values immediately and confetti is disabled for reduced motion.
 - **Themes.** Dark/light via a `dark` class on `<html>`, applied before first paint from `localStorage` or the OS preference.
-- **Mock OAuth.** The Google/Apple buttons show "Coming soon", start no OAuth flow and use neutral monograms, not provider logos.
 
 ## Tests
 

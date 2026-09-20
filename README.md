@@ -24,7 +24,6 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 - Stateless JWT authentication with `ROLE_APPLICANT_DRIVER` / `ROLE_LOGISTICS_ADMIN` authorities.
 - RBAC enforced by the backend; the frontend adds route guards as a convenience only.
 - Flyway migrations, consistent JSON error responses, accessibility and reduced-motion support.
-- Mock "Sign in with Google / Apple" buttons, clearly labelled **Coming soon**. They are not OAuth integrations.
 
 ## 3. Architecture overview
 
@@ -255,7 +254,7 @@ cd takeoff-backend
 - The JWT is kept in `localStorage` (XSS trade-off; no refresh token). Planned: short-lived access token + httpOnly refresh cookie.
 - No dead-letter queue: a message that fails processing is dropped and the user can resend.
 - No general rate limiting on login/registration beyond the OTP controls.
-- Google/Apple buttons are UI mocks; no OAuth exists.
+- Sign-in is email and password only; there is no social (OAuth/SSO) login.
 - Not exercised in the build environment: real MySQL and RabbitMQ (no Docker available there). Backend tests run on H2 (MySQL mode) with the real Flyway migration and a mocked `RabbitTemplate`. See the backend README.
 
 ## 22. Planned next phases

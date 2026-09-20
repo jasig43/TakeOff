@@ -13,7 +13,6 @@ import { Button } from '../ui/Button'
 import { GlassCard } from '../ui/GlassCard'
 import { PasswordField } from '../ui/PasswordField'
 import { TextField } from '../ui/TextField'
-import { OAuthButtons } from './OAuthButtons'
 
 interface LoginFormProps {
   /** Which portal this form belongs to; the returned account's role must match. */
@@ -149,15 +148,12 @@ export function LoginForm({ expectedRole }: LoginFormProps) {
           </Button>
         </form>
 
-        <div className="mt-8 space-y-6">
-          <OAuthButtons />
-          <p className="text-center text-sm text-muted">
-            {copy.alt.text}{' '}
-            <Link to={copy.alt.to} className="font-semibold text-brand underline-offset-4 hover:underline">
-              {copy.alt.label}
-            </Link>
-          </p>
-        </div>
+        <p className="mt-8 text-center text-sm text-muted">
+          {copy.alt.text}{' '}
+          <Link to={copy.alt.to} className="font-semibold text-brand underline-offset-4 hover:underline">
+            {copy.alt.label}
+          </Link>
+        </p>
       </GlassCard>
     </motion.div>
   )
