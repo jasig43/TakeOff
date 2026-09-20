@@ -41,7 +41,7 @@ class DocumentStorageServiceTest {
 	void setUp() {
 		TakeoffProperties base = TestFixtures.properties(false, false);
 		TakeoffProperties properties = new TakeoffProperties(base.jwt(), base.cors(), base.otp(), base.rabbitmq(),
-				base.admin(), base.sms(), new Storage(dir.toString(), MAX));
+				base.admin(), base.driver(), base.sms(), new Storage(dir.toString(), MAX));
 		storage = new DocumentStorageService(properties);
 	}
 

@@ -77,13 +77,14 @@ Status machine: `DRAFT` → `PENDING_REVIEW` → `APPROVED` | `REJECTED`; editin
 ## Tests
 
 ```bash
-./mvnw test              # 163 tests, no external services required
+./mvnw test              # 173 tests, no external services required
 ./mvnw clean package
 ```
 
 | Class | Focus |
 |---|---|
 | `PasswordPolicyTest` | policy rules, every special character, per-rule messages, message-escaping of `{}$` |
+| `DriverAccountSeederTest` | the optional seeded driver: created phone-verified with a hashed password, email normalised, only in dev/test, never overwrites an existing email or phone, refuses weak passwords and incomplete config |
 | `AuthServiceTest` | register (duplicates, broker down), verify (valid/invalid/expired/consumed/attempt limit/hashed), login, resend cooldown and hourly send cap |
 | `OtpConsumerListenerTest` | fixed OTP for `+15550199`, random codes otherwise, invalidation order, malformed/unsupported events, bypass safety, SMS sent after the code is stored, never for the test phone, provider failures contained |
 | `TwilioSmsSenderTest` | exact Twilio request (endpoint, Basic auth, form fields) against a mock HTTP server, messaging-service vs from-number, error handling that leaks no number/body/credentials, startup validation |

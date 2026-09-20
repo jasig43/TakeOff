@@ -10,6 +10,7 @@ import org.springframework.mock.env.MockEnvironment;
 import com.takeoff.backend.config.TakeoffProperties;
 import com.takeoff.backend.config.TakeoffProperties.Admin;
 import com.takeoff.backend.config.TakeoffProperties.Cors;
+import com.takeoff.backend.config.TakeoffProperties.Driver;
 import com.takeoff.backend.config.TakeoffProperties.Jwt;
 import com.takeoff.backend.config.TakeoffProperties.Otp;
 import com.takeoff.backend.config.TakeoffProperties.Rabbit;
@@ -40,7 +41,8 @@ public final class TestFixtures {
 						new TestBypass(bypassEnabled, "+15550199", "123456")),
 				new Rabbit("takeoff.exchange", "otp.queue", "otp.routing.key", "notification.queue",
 						"notification.routing.key"),
-				new Admin(new Seed(false, "", "", "", "")), new Sms("none", noTwilio()),
+				new Admin(new Seed(false, "", "", "", "")), new Driver(new Seed(false, "", "", "", "")),
+				new Sms("none", noTwilio()),
 				new Storage("target/test-uploads-unit", 5 * 1024 * 1024));
 	}
 
@@ -48,13 +50,13 @@ public final class TestFixtures {
 	public static TakeoffProperties withJwtSecret(String secret) {
 		TakeoffProperties base = properties(false, false);
 		return new TakeoffProperties(new Jwt(secret, 15, "takeoff-backend"), base.cors(), base.otp(), base.rabbitmq(),
-				base.admin(), base.sms(), base.storage());
+				base.admin(), base.driver(), base.sms(), base.storage());
 	}
 
 	/** Same as {@link #properties(boolean, boolean)} but with a different SMS configuration. */
 	public static TakeoffProperties withSms(String provider, Twilio twilio) {
 		TakeoffProperties base = properties(false, false);
-		return new TakeoffProperties(base.jwt(), base.cors(), base.otp(), base.rabbitmq(), base.admin(),
+		return new TakeoffProperties(base.jwt(), base.cors(), base.otp(), base.rabbitmq(), base.admin(), base.driver(),
 				new Sms(provider, twilio), base.storage());
 	}
 

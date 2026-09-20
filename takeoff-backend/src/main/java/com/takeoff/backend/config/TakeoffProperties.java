@@ -11,7 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <p>Records containing secrets override {@code toString()} so they can never leak through a log line.
  */
 @ConfigurationProperties(prefix = "takeoff")
-public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Admin admin, Sms sms, Storage storage) {
+public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Admin admin, Driver driver, Sms sms,
+		Storage storage) {
 
 	public record Jwt(String secret, long expirationMinutes, String issuer) {
 
@@ -51,6 +52,10 @@ public record TakeoffProperties(Jwt jwt, Cors cors, Otp otp, Rabbit rabbitmq, Ad
 	}
 
 	public record Admin(Seed seed) {
+	}
+
+	/** An optional ready-made driver account for demos and testing (dev/test profiles only). */
+	public record Driver(Seed seed) {
 	}
 
 	public record Seed(boolean enabled, String email, String password, String phoneNumber, String fullName) {

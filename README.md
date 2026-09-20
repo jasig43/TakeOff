@@ -305,6 +305,18 @@ Public registration always yields `APPLICANT_DRIVER`; a `role` field in the requ
 
 **Dev admin (seeded only under the `dev` profile):** `admin@takeoff.local` / `Dev-Admin-Password#2026`, signed in with the same form at http://localhost:5173 (it opens the admin dashboard). This is a throw-away local credential; production admins must be seeded from your own secrets.
 
+**Seeded test driver (optional, `dev`/`test` profiles only):** to sign in as a driver without registering and receiving an OTP, enable a ready-made, phone-verified driver account. It is off by default and never has a built-in password; supply one in your own environment or in the git-ignored `takeoff-backend/config/application.properties`:
+
+```properties
+takeoff.driver.seed.enabled=true
+takeoff.driver.seed.email=driver@example.com
+takeoff.driver.seed.password=<a password that meets the rules in section 15>
+takeoff.driver.seed.phone-number=+15550101
+takeoff.driver.seed.full-name=TakeOFF Driver
+```
+
+(or the `DRIVER_SEED_*` environment variables). The account is created once on startup and **never overwrites** an existing account, so changing the password in config later does not change an account that already exists. The seeder refuses to run outside the `dev` and `test` profiles, and refuses a password that breaks the policy. Use a phone number you control if you want the decision SMS to reach a real phone.
+
 ## 18. Build and test commands
 
 ```bash

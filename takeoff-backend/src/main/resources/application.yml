@@ -118,3 +118,13 @@ takeoff:
       password: ${ADMIN_SEED_PASSWORD:}
       phone-number: ${ADMIN_SEED_PHONE:}
       full-name: ${ADMIN_SEED_NAME:TakeOFF Administrator}
+
+  driver:
+    seed:
+      # Optional ready-made, phone-verified driver for demos and testing (skips the OTP step). Off by default and
+      # only ever honoured in the dev and test profiles. Real drivers register through the sign-up page.
+      enabled: ${DRIVER_SEED_ENABLED:false}
+      email: ${DRIVER_SEED_EMAIL:}
+      password: ${DRIVER_SEED_PASSWORD:}
+      phone-number: ${DRIVER_SEED_PHONE:}
+      full-name: ${DRIVER_SEED_NAME:TakeOFF Driver}
