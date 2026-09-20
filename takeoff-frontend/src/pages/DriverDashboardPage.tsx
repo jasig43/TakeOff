@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, BadgeCheck, Bell, CircleCheck, Clock, Mail, Phone, RefreshCw } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ArrowRight, BadgeCheck, CircleCheck, Clock, Mail, Phone, RefreshCw } from 'lucide-react'
 import { driverApi } from '../api/authApi'
-import { applicationApi, notificationApi } from '../api/applicationApi'
+import { applicationApi } from '../api/applicationApi'
 import type { Application } from '../api/types'
 import { AppShell } from '../components/layout/AppShell'
 import { Button, ButtonLink } from '../components/ui/Button'
@@ -11,7 +10,6 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useApiResource } from '../hooks/useApiResource'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { formatDateTime } from '../utils/formatting'
 
 interface Stage {
   label: string
@@ -52,21 +50,18 @@ export default function DriverDashboardPage() {
   usePageTitle('Driver dashboard')
   const profile = useApiResource(driverApi.getProfile, 'We could not load your profile.')
   const application = useApiResource(applicationApi.get, 'We could not load your application.')
-  const inbox = useApiResource(notificationApi.inbox, 'We could not load your notifications.')
 
   const loading = (profile.loading && !profile.data) || (application.loading && !application.data)
   const error = profile.error || application.error
   const retry = () => {
     profile.reload()
     application.reload()
-    inbox.reload()
   }
 
   const stages = profile.data && application.data ? buildStages(profile.data.phoneVerified, application.data) : []
   const completed = stages.filter((s) => s.done).length
   const percent = stages.length ? Math.round((completed / stages.length) * 100) : 0
   const action = application.data ? nextAction(application.data) : null
-  const latest = inbox.data?.items.slice(0, 3) ?? []
 
   return (
     <AppShell>
@@ -192,34 +187,6 @@ export default function DriverDashboardPage() {
                   </li>
                 ))}
               </ol>
-            </GlassCard>
-
-            <GlassCard className="p-6 md:col-span-2">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Bell className="h-5 w-5 text-brand" aria-hidden="true" />
-                  Latest notifications
-                </h2>
-                <Link to="/driver/notifications" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
-                  View all
-                </Link>
-              </div>
-              {latest.length === 0 ? (
-                <p className="mt-4 text-sm text-muted">Nothing yet. We will let you know here when your application changes.</p>
-              ) : (
-                <ul className="mt-4 divide-y divide-line">
-                  {latest.map((item) => (
-                    <li key={item.id} className="py-3 first:pt-0 last:pb-0">
-                      <p className={`text-sm ${item.read ? 'font-medium' : 'font-bold'}`}>
-                        {!item.read && <span className="sr-only">Unread: </span>}
-                        {item.title}
-                      </p>
-                      <p className="mt-0.5 text-sm text-muted">{item.message}</p>
-                      <p className="mt-1 text-xs text-muted">{formatDateTime(item.createdAt)}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </GlassCard>
           </motion.div>
         )}

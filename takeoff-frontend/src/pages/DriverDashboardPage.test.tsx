@@ -47,7 +47,7 @@ describe('driver dashboard', () => {
     expect(screen.getByRole('progressbar', { name: /onboarding progress/i })).toHaveAttribute('aria-valuenow', '29') // 2 of 7
   })
 
-  it('shows the Reference ID and status once submitted, and the latest notifications', async () => {
+  it('shows the Reference ID and status once submitted, but no notifications (those live in the header bell)', async () => {
     vi.mocked(applicationApi.get).mockResolvedValue(
       makeCompleteApplication({ status: 'PENDING_REVIEW', editable: false, referenceId: 'TKO-20260920-AB12CD' }),
     )
@@ -62,8 +62,12 @@ describe('driver dashboard', () => {
     expect(await screen.findByText('TKO-20260920-AB12CD')).toBeInTheDocument()
     expect(screen.getByText('Pending review')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /view submission/i })).toBeInTheDocument()
-    expect(await screen.findByText('We received it.')).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: /onboarding progress/i })).toHaveAttribute('aria-valuenow', '100')
+
+    // the dashboard itself carries no notifications; they are reached from the bell in the header
+    expect(screen.queryByRole('heading', { name: /notifications/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('We received it.')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Notifications, 1 unread' })).toBeInTheDocument()
   })
 
   it('has no administrator content', async () => {

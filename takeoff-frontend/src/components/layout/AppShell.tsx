@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react'
 import { MeshBackground } from './MeshBackground'
 import { Sidebar } from './Sidebar'
+import { TopBar } from './TopBar'
 
-/** Layout for signed-in pages: left sidebar (drawer on small screens) and the page content beside it. */
+/**
+ * Layout for signed-in pages: a left sidebar (a drawer on small screens), a fixed white header with the notification
+ * bell across the top, and the page content beside and below them.
+ */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-screen overflow-x-clip">
@@ -14,8 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <MeshBackground />
       <Sidebar />
-      {/* pt-20 on small screens clears the floating menu button; lg:pl-72 leaves room for the 16rem sidebar. */}
-      <main id="main" tabIndex={-1} className="min-h-screen px-4 pb-16 pt-20 outline-none sm:px-8 lg:pl-72 lg:pr-10 lg:pt-10">
+      <TopBar />
+      {/* pt-24 clears the 4rem fixed header; lg:pl-72 leaves room for the 16rem sidebar. */}
+      <main id="main" tabIndex={-1} className="min-h-screen px-4 pb-16 pt-24 outline-none sm:px-8 lg:pl-72 lg:pr-10">
         {children}
       </main>
     </div>

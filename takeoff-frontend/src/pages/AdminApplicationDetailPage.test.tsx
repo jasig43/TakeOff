@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reviewApi } from '../api/applicationApi'
 import { ApiError } from '../api/client'
 import { makeCompleteApplication, makeDetail } from '../test/fixtures'
@@ -24,6 +24,10 @@ function renderDetail(path = '/admin/applications/7') {
 }
 
 describe('admin application detail page', () => {
+  beforeEach(() => {
+    // the header's review bell asks for the counts on every admin page
+    api.summary.mockResolvedValue({ pendingReview: 2, approved: 0, rejected: 0, totalSubmitted: 2 })
+  })
   afterEach(() => {
     window.localStorage.clear()
     vi.unstubAllGlobals()

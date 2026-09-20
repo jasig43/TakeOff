@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, ClipboardList, LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon } from 'lucide-react'
+import { ClipboardList, LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon } from 'lucide-react'
 import type { Role } from '../../api/types'
 import { useAuth } from '../../hooks/useAuth'
-import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import { Button } from '../ui/Button'
 
 interface NavItem {
   to: string
   label: string
   icon: LucideIcon
-  /** Shows the unread-notification count next to the label. */
-  badge?: boolean
 }
 
 /** Each role is only offered the destinations that belong to it. */
@@ -20,7 +17,6 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   APPLICANT_DRIVER: [
     { to: '/driver/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/driver/application', label: 'My application', icon: ClipboardList },
-    { to: '/driver/notifications', label: 'Notifications', icon: Bell, badge: true },
   ],
   LOGISTICS_ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,7 +37,7 @@ function initials(fullName: string): string {
   return (first + last).toUpperCase()
 }
 
-function SidebarContent({ onNavigate, unread }: { onNavigate?: () => void; unread: number }) {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   if (!user) return null
@@ -63,7 +59,7 @@ function SidebarContent({ onNavigate, unread }: { onNavigate?: () => void; unrea
       </div>
 
       <nav aria-label="Main" className="mt-8 flex-1 space-y-1">
-        {NAV_ITEMS[user.role].map(({ to, label, icon: Icon, badge }) => (
+        {NAV_ITEMS[user.role].map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -76,18 +72,6 @@ function SidebarContent({ onNavigate, unread }: { onNavigate?: () => void; unrea
           >
             <Icon className="h-5 w-5" aria-hidden="true" />
             {label}
-            {badge && unread > 0 && (
-              <>
-                <span
-                  className="ml-auto min-w-6 rounded-full bg-brand px-2 py-0.5 text-center text-xs font-bold text-brand-fg"
-                  aria-hidden="true"
-                >
-                  {unread > 99 ? '99+' : unread}
-                </span>
-                {' '}
-                <span className="sr-only">{`(${unread} unread)`}</span>
-              </>
-            )}
           </NavLink>
         ))}
       </nav>
@@ -119,9 +103,6 @@ function SidebarContent({ onNavigate, unread }: { onNavigate?: () => void; unrea
  * a slide-in drawer opened with a small floating menu button (there is deliberately no top bar).
  */
 export function Sidebar() {
-  const { user } = useAuth()
-  // One poller for both the fixed sidebar and the drawer; only drivers have notifications.
-  const unread = useUnreadNotifications(user?.role === 'APPLICANT_DRIVER')
   const [open, setOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -171,7 +152,7 @@ export function Sidebar() {
     <>
       {/* Desktop: fixed sidebar */}
       <aside className="glass fixed inset-y-0 left-0 z-30 hidden w-64 rounded-none border-y-0 border-l-0 p-4 lg:block">
-        <SidebarContent unread={unread} />
+        <SidebarContent />
       </aside>
 
       {/* Mobile / tablet: floating menu button + drawer */}
@@ -179,7 +160,7 @@ export function Sidebar() {
         ref={menuButtonRef}
         type="button"
         onClick={() => setOpen(true)}
-        className="glass fixed left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-2xl text-fg transition hover:bg-brand-soft active:scale-95 lg:hidden"
+        className="glass fixed left-4 top-2.5 z-30 flex h-11 w-11 items-center justify-center rounded-2xl text-fg transition hover:bg-brand-soft active:scale-95 lg:hidden"
         aria-label="Open navigation menu"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -219,7 +200,7 @@ export function Sidebar() {
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
-              <SidebarContent onNavigate={() => setOpen(false)} unread={unread} />
+              <SidebarContent onNavigate={() => setOpen(false)} />
             </motion.div>
           </div>
         )}

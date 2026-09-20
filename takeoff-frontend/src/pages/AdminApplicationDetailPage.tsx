@@ -11,6 +11,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Skeleton } from '../components/ui/Skeleton'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useApiResource } from '../hooks/useApiResource'
+import { NOTIFICATIONS_CHANGED_EVENT } from '../hooks/usePolledResource'
 import { useToast } from '../hooks/useToast'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { formatDateTime } from '../utils/formatting'
@@ -126,6 +127,7 @@ function ApplicationReview({ applicationId }: { applicationId: number }) {
                 applicationId={applicationId}
                 onDecided={(next) => {
                   setDecided(next)
+                  window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT)) // the bell's "waiting" count changed
                   toast.success(
                     next.application.status === 'APPROVED' ? 'Application approved.' : 'Application not approved.',
                   )

@@ -14,7 +14,7 @@ import { Button } from '../components/ui/Button'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Skeleton } from '../components/ui/Skeleton'
 import { useApiResource } from '../hooks/useApiResource'
-import { NOTIFICATIONS_CHANGED_EVENT } from '../hooks/useUnreadNotifications'
+import { NOTIFICATIONS_CHANGED_EVENT } from '../hooks/usePolledResource'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 const LAST_STEP = 4

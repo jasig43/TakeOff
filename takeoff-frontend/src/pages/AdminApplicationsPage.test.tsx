@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reviewApi } from '../api/applicationApi'
 import type { ApplicationSummaryRow, PageOf } from '../api/types'
 import { renderPage } from '../test/renderPage'
@@ -37,6 +37,10 @@ function renderList(path = '/admin/applications') {
 }
 
 describe('admin applications page', () => {
+  beforeEach(() => {
+    // the header's review bell asks for the counts on every admin page
+    api.summary.mockResolvedValue({ pendingReview: 2, approved: 0, rejected: 0, totalSubmitted: 2 })
+  })
   afterEach(() => {
     window.localStorage.clear()
     vi.resetAllMocks()

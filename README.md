@@ -19,14 +19,14 @@ TakeOFF is a driver onboarding platform for courier and logistics companies. App
 
 ### Phase 2: onboarding workflow
 
-- **Role-aligned portals.** After sign-in a driver only ever sees the driver dashboard and driver pages (My application, Notifications); an administrator only sees the admin dashboard and review pages (Applications). The sidebar lists just the current role's destinations, the routes are guarded in the SPA, and the backend enforces the same split (`/drivers/**` vs `/admin/**`), so a driver calling an admin endpoint gets `403`.
+- **Role-aligned portals.** After sign-in a driver only ever sees the driver dashboard and driver pages (My application, Notifications); an administrator only sees the admin dashboard and review pages (Applications). The sidebar lists just the current role's destinations, the header bell shows just that role's notifications, the routes are guarded in the SPA, and the backend enforces the same split (`/drivers/**` vs `/admin/**`), so a driver calling an admin endpoint gets `403`.
 - **Driver profile and KYC:** date of birth (18+), address, emergency contact, national ID, driver's licence number, class and expiry (must not be expired).
 - **Vehicle registration:** type, registration (plate) number, make and model. National ID and plate are unique across drivers.
 - **Document management:** upload, replace, view and remove the driver's licence, vehicle registration and insurance certificate (PDF, JPG or PNG, up to 5 MB). The file's real type is checked from its bytes, not its name.
 - **Application submission and tracking:** a review step summarises everything, the driver confirms and submits, the API stores the application in MySQL as `PENDING_REVIEW`, and the completion screen shows the **Reference ID** and status. The dashboard tracks progress and status at any time.
 - **Administrator portal:** email/password sign-in (JWT, `LOGISTICS_ADMIN`), a dashboard with counts and the review queue, a filterable and searchable application list, and a detail page that shows every field and opens each uploaded document.
 - **Approve / reject:** `PENDING_REVIEW` to `APPROVED` or `REJECTED`, persisted through the admin API (`PATCH /admin/applications/{id}/status`). Rejection requires a note; the driver can then correct the application and resubmit.
-- **Driver notifications:** an in-app inbox with an unread badge in the sidebar. A notification is created when an application is submitted and when it is approved or rejected. Each decision is also published to RabbitMQ (`notification.queue`), whose consumer texts the driver the outcome through the configured SMS provider.
+- **Driver notifications:** a bell in the fixed white header shows the unread count and opens a panel with the latest notifications (mark one or all as read, or open the full inbox page); the dashboard and sidebar carry no notifications. An administrator's bell shows how many applications are waiting for review and links to that queue. A notification is created when an application is submitted and when it is approved or rejected. Each decision is also published to RabbitMQ (`notification.queue`), whose consumer texts the driver the outcome through the configured SMS provider.
 
 ### Phase 1: authentication
 
@@ -371,7 +371,7 @@ cd takeoff-backend
 - No general rate limiting on login/registration beyond the OTP controls.
 - Sign-in is email and password only; there is no social (OAuth/SSO) login.
 - Uploaded documents live on the API server's local disk (`UPLOAD_DIR`). That is fine for one server; run more than one, or on ephemeral hosting, and you need shared storage (an S3-compatible store behind `DocumentStorageService`) and file backups. There is **no antivirus scan** of uploads; only the type, size and signature are checked.
-- Notifications are an in-app inbox (the sidebar badge refreshes every minute and on navigation, it is not pushed) plus an SMS of the decision, sent by the `notification.queue` consumer through the same provider as OTPs. With `SMS_PROVIDER=none` there is no SMS, and as with OTPs a failed SMS is only logged. There is no email channel.
+- Notifications are an in-app inbox (the header bell refreshes every minute, on navigation and after the user changes something; it is not pushed) plus an SMS of the decision, sent by the `notification.queue` consumer through the same provider as OTPs. With `SMS_PROVIDER=none` there is no SMS, and as with OTPs a failed SMS is only logged. There is no email channel.
 - An administrator's decision is final in this release: an approved or rejected application cannot be moved back to `PENDING_REVIEW` by an admin (a rejected driver can reopen it themselves).
 - Administrator accounts cannot be created or managed in the UI; use the config-driven seeder.
 - Document review is "open the file in a new tab"; there is no in-page viewer, annotation or per-document accept/reject.
