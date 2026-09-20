@@ -51,8 +51,28 @@ public class JwtService {
 	public JwtService(TakeoffProperties properties, Environment environment, Clock clock) {
 		TakeoffProperties.Jwt jwt = properties.jwt();
 		String secret = jwt.secret();
-		boolean devOrTest = environment.acceptsProfiles(Profiles.of("dev", "test"));
+		validateSecret(secret, environment.acceptsProfiles(Profiles.of("dev", "test")));
 
+		SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+		this.encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
+
+		NimbusJwtDecoder nimbusDecoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+		nimbusDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(new JwtTimestampValidator(Duration.ofSeconds(5)),
+				new JwtIssuerValidator(jwt.issuer())));
+		this.decoder = nimbusDecoder;
+
+		this.issuer = jwt.issuer();
+		this.lifetime = Duration.ofMinutes(jwt.expirationMinutes());
+		this.clock = clock;
+	}
+
+	/**
+	 * Fails fast, with an actionable message, unless the secret is present, long enough for HS256, and not the
+	 * built-in development value (which is only acceptable in the dev/test profiles). Also called before the
+	 * application context starts (see {@code TakeoffBackendApplication}) so a missing secret is reported
+	 * immediately rather than after an unrelated failure such as an unreachable database.
+	 */
+	public static void validateSecret(String secret, boolean devOrTest) {
 		if (secret == null || secret.isBlank()) {
 			throw new IllegalStateException("JWT_SECRET is not configured. Set the JWT_SECRET environment variable to a "
 					+ "random string of at least " + MIN_SECRET_BYTES + " characters (for example: openssl rand -base64 48), "
@@ -66,18 +86,6 @@ public class JwtService {
 			throw new IllegalStateException("The built-in development JWT secret must not be used outside the dev/test "
 					+ "profiles. Set JWT_SECRET to a private random value.");
 		}
-
-		SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-		this.encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
-
-		NimbusJwtDecoder nimbusDecoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
-		nimbusDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(new JwtTimestampValidator(Duration.ofSeconds(5)),
-				new JwtIssuerValidator(jwt.issuer())));
-		this.decoder = nimbusDecoder;
-
-		this.issuer = jwt.issuer();
-		this.lifetime = Duration.ofMinutes(jwt.expirationMinutes());
-		this.clock = clock;
 	}
 
 	/** Lifetime of newly issued tokens, in seconds. */

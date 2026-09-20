@@ -125,7 +125,25 @@ $env:SPRING_PROFILES_ACTIVE = "dev"
 .\mvnw.cmd spring-boot:run
 ```
 
-The API listens on http://localhost:8080. Running **without** a profile is intentionally not a dev environment: the app refuses to start until `JWT_SECRET` is set, with a message saying so.
+The API listens on http://localhost:8080. Running **without** a profile is intentionally not a dev environment: the app refuses to start until `JWT_SECRET` is set, and says so before it touches the database.
+
+**IntelliJ IDEA:** open the run configuration for `TakeoffBackendApplication` → *Modify options* → *Active profiles* → enter `dev` (or add the environment variable `SPRING_PROFILES_ACTIVE=dev`). Starting it with no profile is the usual cause of `Unknown database 'takeoff'` (see Troubleshooting).
+
+**Using a local MySQL instead of Docker** (the dev profile expects the Docker MySQL on port 3307): create the database and a user, then set these environment variables in your run configuration.
+
+```sql
+CREATE DATABASE takeoff CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'takeoff'@'localhost' IDENTIFIED BY 'choose-a-password';
+GRANT ALL PRIVILEGES ON takeoff.* TO 'takeoff'@'localhost';
+```
+
+```
+MYSQL_URL=jdbc:mysql://localhost:3306/takeoff?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+MYSQL_USER=takeoff
+MYSQL_PASSWORD=choose-a-password
+```
+
+RabbitMQ is still required for the OTP step. Without it, registration succeeds but reports `otpDispatched: false`, and Resend returns 503.
 
 ## 12. Run the frontend
 
@@ -214,6 +232,7 @@ cd takeoff-backend
 | Symptom | Fix |
 |---|---|
 | `JWT_SECRET is not configured` on start | Run with `SPRING_PROFILES_ACTIVE=dev`, or set `JWT_SECRET` to 32+ random characters. |
+| `Unknown database 'takeoff'` (log says `No active profile set`) | You started without the `dev` profile, so the base config (`localhost:3306`) was used. Set the `dev` profile, and make sure the database exists: `docker compose up -d`, or create it yourself as shown under *Run the backend*. |
 | `Access denied` / connection refused to MySQL | Is `docker compose ps` healthy? Dev profile expects MySQL on **3307**. A locally installed MySQL owns 3306. |
 | Registration works but no code arrives | RabbitMQ unreachable: the API returns `otpDispatched:false`; fix RabbitMQ and press **Resend code**. In dev, read the code in the backend log. |
 | Browser shows CORS errors | `FRONTEND_ORIGIN` must exactly match the SPA origin (scheme + host + port). |
