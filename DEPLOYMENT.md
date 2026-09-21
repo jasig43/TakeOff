@@ -60,6 +60,7 @@ Do not use it for real drivers' data.
 | `JWT_SECRET` | yes | at least 32 random characters |
 | `FRONTEND_ORIGIN` | yes | the website's origin(s), comma-separated, for CORS, e.g. `https://take-off-seven.vercel.app` |
 | `ADMIN_SEED_ENABLED`, `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_PHONE` | for the first login | creates the first administrator (created once, never overwritten) |
+| `ADMIN_SEED_RESET_PASSWORD` | no | recovery only, default `false`: `true` puts `ADMIN_SEED_PASSWORD` on the existing administrator at the next start (see below) |
 | `TAKEOFF_ACCOUNTS_TEMPORARY_PASSWORD_HOURS` | no | lifetime of temporary passwords (default 72) |
 | `PORT` | set by Render | the port to listen on |
 
@@ -81,6 +82,24 @@ Do not use it for real drivers' data.
 5. **Vercel, website.** In the project settings set *Root Directory* to `takeoff-frontend` (Vercel detects Vite; the
    folder's `vercel.json` adds the single-page-app rewrite), add `VITE_API_BASE_URL`, and deploy.
 6. Put the website's URL into the API's `FRONTEND_ORIGIN` and redeploy the API if it changed.
+
+## When the administrator cannot sign in
+
+`ADMIN_SEED_PASSWORD` is only used **once**, to create the administrator the first time the API starts against an empty
+database. After that the password lives in the database, so **changing the variable does not change the login**. (This is
+deliberate: a restart must never undo a password the administrator chose in Settings.)
+
+If the password was changed in the dashboard afterwards, or is lost, and nobody can reach the database:
+
+1. Set `ADMIN_SEED_PASSWORD` to the password you want (15+ characters, with upper case, lower case, a digit and a symbol).
+2. Set `ADMIN_SEED_RESET_PASSWORD=true` and let the service restart.
+3. Sign in with `ADMIN_SEED_EMAIL` and that password. The log says `ADMIN_SEED_RESET_PASSWORD is on: the password of ...
+   was set`.
+4. **Set `ADMIN_SEED_RESET_PASSWORD` back to `false`** (or delete it). While it is on, every start puts the configured
+   password back and so undoes any password chosen since.
+
+It only ever touches the existing account with the `ADMIN_SEED_EMAIL` address, and only if that account is an
+administrator.
 
 ## Things to know
 

@@ -53,6 +53,8 @@ takeoff:
       email: ${ADMIN_SEED_EMAIL:}
       password: ${ADMIN_SEED_PASSWORD:}
       phone-number: ${ADMIN_SEED_PHONE:+15550100}
+    # Recovery only: true puts ADMIN_SEED_PASSWORD on the existing administrator at the next start. See DEPLOYMENT.md.
+    reset-password: ${ADMIN_SEED_RESET_PASSWORD:false}
 
 logging:
   level:
